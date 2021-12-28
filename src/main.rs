@@ -1,8 +1,8 @@
-mod file;
-
-use crate::file::*;
-
 use std::{error, process};
+
+mod file;
+use crate::file::*;
+use bibadd::parse::{BibTex, Format};
 
 use clap::{crate_version, App, Arg};
 use log::{error, trace};
@@ -47,12 +47,14 @@ fn try_main() -> Result<(), Box<dyn error::Error>> {
         find_bib_file_in_current_directory()?
     };
 
-    let biblio = read_bib_file(&mut bib_file)?;
+    let biblio = deserialize_file(&mut bib_file, BibTex::parse)?;
 
     let search = matches.value_of("search").unwrap();
 
     if matches.is_present("doi") {
         bibadd::add_by_doi(search, &mut bib_file, biblio)?;
+    } else if matches.is_present("isbn") {
+        bibadd::add_by_isbn(search, &mut bib_file, biblio)?;
     } else {
         unimplemented!();
     }

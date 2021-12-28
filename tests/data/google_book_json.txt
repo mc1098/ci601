@@ -1,0 +1,77 @@
+{
+  "kind": "books#volumes",
+  "totalItems": 1,
+  "items": [
+    {
+      "kind": "books#volume",
+      "id": "QnghAQAAIAAJ",
+      "etag": "k7aaAfrlIk4",
+      "selfLink": "https://www.googleapis.com/books/v1/volumes/QnghAQAAIAAJ",
+      "volumeInfo": {
+        "title": "Code Complete",
+        "authors": [
+          "Steve McConnell"
+        ],
+        "publisher": "DV-Professional",
+        "publishedDate": "2004",
+        "description": "This practical handbook of software construction is fully updated and revised with leading-edge practices and hundreds of new code samples, illustrating the art and science of constructing software.",
+        "industryIdentifiers": [
+          {
+            "type": "OTHER",
+            "identifier": "UCSC:32106018687688"
+          }
+        ],
+        "readingModes": {
+          "text": false,
+          "image": false
+        },
+        "pageCount": 914,
+        "printType": "BOOK",
+        "categories": [
+          "Computers"
+        ],
+        "averageRating": 4,
+        "ratingsCount": 19,
+        "maturityRating": "NOT_MATURE",
+        "allowAnonLogging": false,
+        "contentVersion": "0.1.1.0.preview.0",
+        "panelizationSummary": {
+          "containsEpubBubbles": false,
+          "containsImageBubbles": false
+        },
+        "imageLinks": {
+          "smallThumbnail": "http://books.google.com/books/content?id=QnghAQAAIAAJ&printsec=frontcover&img=1&zoom=5&source=gbs_api",
+          "thumbnail": "http://books.google.com/books/content?id=QnghAQAAIAAJ&printsec=frontcover&img=1&zoom=1&source=gbs_api"
+        },
+        "language": "en",
+        "previewLink": "http://books.google.co.uk/books?id=QnghAQAAIAAJ&dq=isbn:0735619670&hl=&cd=1&source=gbs_api",
+        "infoLink": "http://books.google.co.uk/books?id=QnghAQAAIAAJ&dq=isbn:0735619670&hl=&source=gbs_api",
+        "canonicalVolumeLink": "https://books.google.com/books/about/Code_Complete.html?hl=&id=QnghAQAAIAAJ"
+      },
+      "saleInfo": {
+        "country": "GB",
+        "saleability": "NOT_FOR_SALE",
+        "isEbook": false
+      },
+      "accessInfo": {
+        "country": "GB",
+        "viewability": "NO_PAGES",
+        "embeddable": false,
+        "publicDomain": false,
+        "textToSpeechPermission": "ALLOWED",
+        "epub": {
+          "isAvailable": false
+        },
+        "pdf": {
+          "isAvailable": false
+        },
+        "webReaderLink": "http://play.google.com/books/reader?id=QnghAQAAIAAJ&hl=&printsec=frontcover&source=gbs_api",
+        "accessViewStatus": "NONE",
+        "quoteSharingAllowed": false
+      },
+      "searchInfo": {
+        "textSnippet": "This practical handbook of software construction is fully updated and revised with leading-edge practices and hundreds of new code samples, illustrating the art and science of constructing software."
+      }
+    }
+  ]
+}

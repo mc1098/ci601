@@ -4,6 +4,7 @@ use std::{
     path::Path,
 };
 
+use bibadd::parse::{Format, Parser};
 use biblatex::Bibliography;
 use eyre::{eyre, Context, Result};
 use glob::glob;
@@ -59,13 +60,26 @@ fn find_bib_file_in_directory<P: AsRef<Path>>(dir: P) -> Result<File> {
     open_file_for_read_and_append(path_buf.as_path())
 }
 
-pub fn read_bib_file(file: &mut File) -> Result<Bibliography> {
-    let mut bib_content = String::new();
-    file.read_to_string(&mut bib_content)
-        .wrap_err("Cannot read contents of .bib file")?;
-
-    Bibliography::parse(&bib_content).ok_or_else(|| eyre!("Cannot parse contents of .bib file"))
+fn read_file_to_string(file: &mut File) -> Result<String> {
+    let mut content = String::new();
+    file.read_to_string(&mut content)
+        .wrap_err("Cannot read contents of file")
+        .map(move |_| content)
 }
+
+pub fn deserialize_file<P, F: Format>(file: &mut File, parser: P) -> Result<Bibliography>
+where
+    P: Parser<F>,
+{
+    let contents = read_file_to_string(file)?;
+    parser.parse(F::new(contents))
+}
+
+//pub fn read_bib_file(file: &mut File) -> Result<Bibliography> {
+//    let bib_content = read_file_to_string(file)?;
+//
+//    Bibliography::parse(&bib_content).ok_or_else(|| eyre!("Cannot parse contents of .bib file"))
+//}
 
 #[cfg(test)]
 mod tests {
@@ -76,6 +90,7 @@ mod tests {
         fixture::{FileTouch, PathChild},
         NamedTempFile, TempDir,
     };
+    use bibadd::parse::BibTex;
 
     #[test]
     #[should_panic(
@@ -150,7 +165,7 @@ mod tests {
         let mut file = std::fs::File::open("./tests/data/bibtex1.bib")
             .expect("Cannot open ./tests/data/bibtex1.bib file for test");
 
-        let biblio = read_bib_file(&mut file).unwrap();
+        let biblio = deserialize_file(&mut file, BibTex::parse).unwrap();
         let res = biblio.iter().next().unwrap();
 
         assert_eq!(expected, res);

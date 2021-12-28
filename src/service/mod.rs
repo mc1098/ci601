@@ -1,9 +1,6 @@
+mod api;
 mod doi;
+mod isbn;
 
-pub use doi::DoiService;
-
-use biblatex::Entry;
-
-pub trait BibTexService {
-    fn get_bibtex(&self) -> Result<Entry, eyre::Report>;
-}
+pub(crate) use doi::get_entry_by_doi;
+pub(crate) use isbn::get_book_by_isbn;

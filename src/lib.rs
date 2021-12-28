@@ -1,43 +1,54 @@
+pub mod parse;
 mod service;
 
-use biblatex::{Bibliography, Entry};
-use eyre::eyre;
-use service::{BibTexService, DoiService};
+use service::{get_book_by_isbn, get_entry_by_doi};
+
+use biblatex::{Bibliography, ChunksExt, Entry};
+use eyre::{eyre, Context, Result};
+use log::trace;
 
 #[inline]
-fn unique_entry_check<P>(bibliography: Bibliography, predicate: P) -> eyre::Result<()>
+fn unique_entry_check<P>(bibliography: Bibliography, predicate: P) -> Result<()>
 where
-    P: Fn(&Entry) -> eyre::Result<()>,
+    P: Fn(&Entry) -> Result<()>,
 {
     bibliography.iter().try_fold((), |_, e| predicate(e))
-}
-
-pub fn get_by_doi(doi: &str) -> Result<String, eyre::Report> {
-    DoiService::new(doi)
-        .get_bibtex()
-        .map(|entry| entry.to_bibtex_string())
-}
-
-fn add_by_service(service: impl BibTexService, bib: &mut impl std::io::Write) -> eyre::Result<()> {
-    let entry = service.get_bibtex()?;
-    bib.write_all(entry.to_bibtex_string().as_bytes())?;
-    Ok(())
 }
 
 pub fn add_by_doi(
     doi: &str,
     bib: &mut impl std::io::Write,
     bibliography: Bibliography,
-) -> Result<(), eyre::Report> {
+) -> Result<()> {
+    trace!("Check if the doi '{}' already exists", doi);
     // check if the current bibliography contains the entry already before doing the http request.
     unique_entry_check(bibliography, |e| {
         e.doi()
             .and_then(|d| (d != doi).then(|| ()))
-            .ok_or_else(|| eyre!("A bibtex entry already exists with the doi of '{}'"))
+            .ok_or_else(|| eyre!("A bibtex entry already exists with the doi of '{}'", doi))
     })?;
 
-    let service = DoiService::new(doi);
-    add_by_service(service, bib)
+    let entry = get_entry_by_doi(doi)?;
+    bib.write_all(entry.to_bibtex_string().as_bytes())
+        .wrap_err_with(|| eyre!("Cannot add entry"))
+}
+
+pub fn add_by_isbn(
+    isbn: &str,
+    bib: &mut impl std::io::Write,
+    bibliography: Bibliography,
+) -> Result<()> {
+    trace!("Check if the ISBN '{}' already exists", isbn);
+    unique_entry_check(bibliography, |e| {
+        e.isbn()
+            .map(|chunk| chunk.format_verbatim().to_lowercase() == isbn)
+            .and_then(|b| b.then(|| ()))
+            .ok_or_else(|| eyre!("A bibtex entry already exists with the ISBN of '{}'", isbn))
+    })?;
+
+    let entry = get_book_by_isbn(isbn)?;
+    bib.write_all(entry.to_bibtex_string().as_bytes())
+        .wrap_err_with(|| eyre!("Cannot add entry"))
 }
 
 #[cfg(test)]
