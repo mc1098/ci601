@@ -1,9 +1,7 @@
 use biblatex::{Chunk, Entry, Person};
-use eyre::{eyre, Context};
+use eyre::{eyre, Context, Result};
 use log::*;
 use serde::Deserialize;
-
-type Result<T> = eyre::Result<T>;
 
 const GOOGLE_BOOKS_URL: &str = "https:://www.googleapis.com/books/v1/volumes?q=isbn:";
 
@@ -32,18 +30,25 @@ pub(crate) fn get_book_info(isbn: &str) -> Result<Book> {
 #[derive(Deserialize)]
 #[cfg_attr(test, derive(Debug))]
 struct GoogleModel {
-    items: Vec<VolumeInfo>,
+    items: Vec<Item>,
 }
 
+/// The API does not include the ISBN.. so this struct also acts as
+/// a builder for the [`Book`] type, see [`VolumeInfo::build`].
+#[derive(Deserialize)]
+#[cfg_attr(test, derive(Debug))]
+struct Item {
+    #[serde(rename = "volumeInfo")]
+    volume_info: VolumeInfo,
+}
+
+#[cfg_attr(test, derive(Debug))]
 pub(crate) struct Book {
     isbn: String,
     volume_info: VolumeInfo,
 }
 
 /// Volume information from the Google Book API
-///
-/// The API does not include the ISBN.. so this struct also acts as
-/// a builder for the [`Book`] type, see [`VolumeInfo::build`].
 #[derive(Deserialize)]
 #[cfg_attr(test, derive(Debug))]
 struct VolumeInfo {
@@ -54,12 +59,12 @@ struct VolumeInfo {
     published_date: String,
 }
 
-impl VolumeInfo {
+impl Item {
     // We use a builder pattern here to enforce a valid [`Book`] is always returned.
     fn build(self, isbn: String) -> Book {
         Book {
             isbn,
-            volume_info: self,
+            volume_info: self.volume_info,
         }
     }
 }
@@ -110,12 +115,13 @@ impl TryFrom<Book> for Entry {
 
 #[test]
 fn book_can_be_derived_from_json() {
+    let isbn = "0735619670";
     let json = include_str!("../../../tests/data/google_book_json.txt");
     let mut model: GoogleModel = serde_json::from_str(json).unwrap();
-    let book = &model.items.remove(0).build("0735619670".to_owned());
+    let book = &model.items.remove(0).build(isbn.to_owned());
 
     // ISBN is not in the response so will be the default value until changed.
-    assert_eq!(String::new(), book.isbn);
+    assert_eq!(isbn, book.isbn);
     assert_eq!("Steve McConnell", book.volume_info.authors[0]);
     assert_eq!("Code Complete", book.volume_info.title);
     assert_eq!("DV-Professional", book.volume_info.publisher);
