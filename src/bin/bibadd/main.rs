@@ -2,7 +2,7 @@ use std::{error, process};
 
 mod file;
 use crate::file::*;
-use bibadd::format::{BibTex, FormatReader};
+use bibadd_core::format::{BibTex, FormatReader};
 
 use clap::{AppSettings, Parser, Subcommand};
 use log::{error, trace};
@@ -37,8 +37,8 @@ fn try_main() -> Result<(), Box<dyn error::Error>> {
     let biblio = file.read_ast()?;
 
     match &cli.command {
-        Commands::Doi { doi } => bibadd::add_by_doi(doi, &mut file, biblio)?,
-        Commands::Isbn { isbn } => bibadd::add_by_isbn(isbn, &mut file, biblio)?,
+        Commands::Doi { doi } => bibadd_core::add_by_doi(doi, &mut file, biblio)?,
+        Commands::Isbn { isbn } => bibadd_core::add_by_isbn(isbn, &mut file, biblio)?,
     }
 
     Ok(())
