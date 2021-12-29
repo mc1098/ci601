@@ -7,7 +7,6 @@ use std::{
 
 use bibadd::format::{Format, FormatReader, FormatWriter};
 
-use biblatex::Bibliography;
 use eyre::{eyre, Context, Result};
 use glob::glob;
 
@@ -116,21 +115,17 @@ fn read_file_to_string(file: &mut File) -> Result<String> {
         .map(move |_| content)
 }
 
-pub fn deserialize_file<F: Format>(file: &mut FormatFile<F>) -> Result<Bibliography> {
-    let contents = file.read()?;
-    contents.parse()
-}
-
 #[cfg(test)]
 mod tests {
 
     use super::*;
+    use bibadd::format::BibTex;
 
     use assert_fs::{
         fixture::{FileTouch, PathChild},
         NamedTempFile, TempDir,
     };
-    use bibadd::format::BibTex;
+    use biblatex::Bibliography;
 
     #[test]
     #[should_panic(
@@ -206,7 +201,7 @@ mod tests {
             .expect("Cannot open ./tests/data/bibtex1.bib file for test");
         let mut file: FormatFile<BibTex> = FormatFile::new(file);
 
-        let biblio = deserialize_file(&mut file).unwrap();
+        let biblio = file.read_ast().unwrap();
         let res = biblio.iter().next().unwrap();
 
         assert_eq!(expected, res);

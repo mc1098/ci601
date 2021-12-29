@@ -31,6 +31,11 @@ pub trait FormatReader {
     type Format: Format;
 
     fn read(&mut self) -> Result<Self::Format>;
+
+    fn read_ast(&mut self) -> Result<Bibliography> {
+        let format = self.read()?;
+        format.parse()
+    }
 }
 
 #[derive(PartialEq)]
