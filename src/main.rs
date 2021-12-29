@@ -4,60 +4,83 @@ mod file;
 use crate::file::*;
 use bibadd::format::{BibTex, FormatReader};
 
-use clap::{crate_version, App, Arg};
+use clap::{AppSettings, Parser, Subcommand};
 use log::{error, trace};
 
 fn main() {
-    stderrlog::new().verbosity(3).init().unwrap();
     if let Err(err) = try_main() {
-        error!("{}", err);
+        error!("{:#}", err);
         process::exit(2);
     }
 }
 
 fn try_main() -> Result<(), Box<dyn error::Error>> {
-    let matches = App::new("bibadd")
-        .author("mc1098")
-        .about("Search and add references easily to .bib files easily in the terminal")
-        .version(crate_version!())
-        .arg(
-            Arg::with_name("search")
-                .help("Value used for searching")
-                .required(true),
-        )
-        .arg(
-            Arg::with_name("bib")
-                .help("The name of the .bib file")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("doi")
-                .help("Sets the search term as a doi")
-                .long("doi"),
-        )
-        .get_matches();
+    let cli = Cli::parse();
 
-    // open .bib
-    let mut bib_file = if let Some(file_name) = matches.value_of("bib") {
-        trace!("'bib' option used with value of '{}'", file_name);
+    // if quiet then ignore verbosity but still show errors
+    let verbosity = if cli.quiet {
+        1
+    } else {
+        cli.verbosity as usize + 1
+    };
+
+    stderrlog::new().verbosity(verbosity).init()?;
+
+    let mut file = if let Some(file_name) = cli.file {
+        trace!("'file' option used with value of '{}'", file_name);
         open_file_by_name::<BibTex, _>(file_name)?
     } else {
-        // find the .bib on our own
-        trace!("'bib' option not used - try and find any .bib files in current directory");
+        trace!("'file' option not used - try and find any .bib files in current directory");
         find_format_file_in_current_directory::<BibTex>()?
     };
 
-    let biblio = bib_file.read_ast()?;
+    let biblio = file.read_ast()?;
 
-    let search = matches.value_of("search").unwrap();
-
-    if matches.is_present("doi") {
-        bibadd::add_by_doi(search, &mut bib_file, biblio)?;
-    } else if matches.is_present("isbn") {
-        bibadd::add_by_isbn(search, &mut bib_file, biblio)?;
-    } else {
-        unimplemented!();
+    match &cli.command {
+        Commands::Doi { doi } => bibadd::add_by_doi(doi, &mut file, biblio)?,
+        Commands::Isbn { isbn } => bibadd::add_by_isbn(isbn, &mut file, biblio)?,
     }
 
     Ok(())
+}
+
+#[derive(Parser)]
+#[clap(name = "bibadd")]
+#[clap(about = "Search and add references easily to reference files easily in the terminal")]
+#[clap(version, author)]
+struct Cli {
+    #[clap(subcommand)]
+    command: Commands,
+
+    /// The name of the file
+    #[clap(short, long)]
+    file: Option<String>,
+
+    /// How chatty the program is when performing commands
+    ///
+    /// The number of times this flag is used will increase how chatty
+    /// the program is.
+    #[clap(short, long, parse(from_occurrences))]
+    verbosity: u8,
+
+    /// Prevents the program from writing to stdout, errors will still be printed to stderr.
+    #[clap(short, long)]
+    quiet: bool,
+}
+
+#[derive(Subcommand)]
+#[non_exhaustive]
+enum Commands {
+    /// Search for reference by doi
+    #[clap(setting(AppSettings::ArgRequiredElseHelp))]
+    Doi {
+        /// The doi to search for
+        doi: String,
+    },
+    /// Search for reference by ISBN
+    #[clap(setting(AppSettings::ArgRequiredElseHelp))]
+    Isbn {
+        /// The ISBN to search for
+        isbn: String,
+    },
 }

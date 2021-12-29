@@ -47,6 +47,7 @@ impl<F: Format> FormatWriter for FormatFile<F> {
 fn open_file_for_read_and_append<F: Format>(path: &Path) -> Result<FormatFile<F>> {
     OpenOptions::new()
         .read(true)
+        .write(true)
         .open(path)
         .map(FormatFile::<F>::new)
         .wrap_err_with(|| {
