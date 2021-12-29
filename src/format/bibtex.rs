@@ -27,6 +27,6 @@ impl Format for BibTex {
     }
 
     fn ext() -> &'static str {
-        ".bib"
+        "bib"
     }
 }
