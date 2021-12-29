@@ -2,7 +2,7 @@ use std::{error, process};
 
 mod file;
 use crate::file::*;
-use bibadd::parse::{BibTex, Format};
+use bibadd::format::BibTex;
 
 use clap::{crate_version, App, Arg};
 use log::{error, trace};
@@ -40,14 +40,14 @@ fn try_main() -> Result<(), Box<dyn error::Error>> {
     // open .bib
     let mut bib_file = if let Some(file_name) = matches.value_of("bib") {
         trace!("'bib' option used with value of '{}'", file_name);
-        open_bib_file_by_name(file_name)?
+        open_file_by_name::<BibTex, _>(file_name)?
     } else {
         // find the .bib on our own
         trace!("'bib' option not used - try and find any .bib files in current directory");
-        find_bib_file_in_current_directory()?
+        find_format_file_in_current_directory::<BibTex>()?
     };
 
-    let biblio = deserialize_file(&mut bib_file, BibTex::parse)?;
+    let biblio = deserialize_file(&mut bib_file)?;
 
     let search = matches.value_of("search").unwrap();
 
