@@ -2,7 +2,7 @@ use std::{error, process};
 
 mod file;
 use crate::file::*;
-use bibadd::format::BibTex;
+use bibadd::format::{BibTex, FormatReader};
 
 use clap::{crate_version, App, Arg};
 use log::{error, trace};
@@ -47,7 +47,7 @@ fn try_main() -> Result<(), Box<dyn error::Error>> {
         find_format_file_in_current_directory::<BibTex>()?
     };
 
-    let biblio = deserialize_file(&mut bib_file)?;
+    let biblio = bib_file.read_ast()?;
 
     let search = matches.value_of("search").unwrap();
 
