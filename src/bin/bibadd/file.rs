@@ -5,7 +5,7 @@ use std::{
     path::Path,
 };
 
-use bibadd::format::{Format, FormatReader, FormatWriter};
+use bibadd_core::format::{Format, FormatReader, FormatWriter};
 
 use eyre::{eyre, Context, Result};
 use glob::glob;
@@ -120,7 +120,7 @@ fn read_file_to_string(file: &mut File) -> Result<String> {
 mod tests {
 
     use super::*;
-    use bibadd::format::BibTex;
+    use bibadd_core::format::BibTex;
 
     use assert_fs::{
         fixture::{FileTouch, PathChild},
@@ -194,7 +194,7 @@ mod tests {
     #[test]
     fn read_bib_file_as_bibliograph() {
         // bibtex1 only contains a single bibtex entry so only check equality for one entry
-        let bibtex = include_str!("../tests/data/bibtex1.bib");
+        let bibtex = include_str!("../../../tests/data/bibtex1.bib");
         let biblio = Bibliography::parse(bibtex).expect("bibtex1 content is a valid bibtex entry");
         let expected = biblio.iter().next().unwrap();
 

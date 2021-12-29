@@ -19,7 +19,7 @@ where
 
 pub fn add_by_doi<F: FormatWriter>(
     doi: &str,
-    file: &mut F,
+    writer: &mut F,
     mut bibliography: Bibliography,
 ) -> Result<()> {
     unique_entry_check(&bibliography, |e| {
@@ -30,12 +30,12 @@ pub fn add_by_doi<F: FormatWriter>(
 
     let entry = get_entry_by_doi(doi)?;
     bibliography.insert(entry);
-    file.write_ast(bibliography)
+    writer.write_ast(bibliography)
 }
 
 pub fn add_by_isbn<F: FormatWriter>(
     isbn: &str,
-    file: &mut F,
+    writer: &mut F,
     mut bibliography: Bibliography,
 ) -> Result<()> {
     trace!("Check if the ISBN '{}' already exists", isbn);
@@ -48,7 +48,7 @@ pub fn add_by_isbn<F: FormatWriter>(
 
     let entry = get_book_by_isbn(isbn)?;
     bibliography.insert(entry);
-    file.write_ast(bibliography)
+    writer.write_ast(bibliography)
 }
 
 #[cfg(test)]
