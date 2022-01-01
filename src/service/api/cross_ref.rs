@@ -1,6 +1,6 @@
 use eyre::{eyre, Context};
 
-pub(in crate::service) fn get_entry_info_by_doi(doi: &str) -> eyre::Result<String> {
+pub(crate) fn get_entry_info_by_doi(doi: &str) -> eyre::Result<String> {
     let url = format!(
         "https://api.crossref.org/works/{}/transform/application/x-bibtex",
         doi
