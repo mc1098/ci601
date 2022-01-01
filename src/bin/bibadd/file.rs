@@ -126,7 +126,6 @@ mod tests {
         fixture::{FileTouch, PathChild},
         NamedTempFile, TempDir,
     };
-    use biblatex::Bibliography;
 
     #[test]
     #[should_panic(
@@ -195,15 +194,23 @@ mod tests {
     fn read_bib_file_as_bibliograph() {
         // bibtex1 only contains a single bibtex entry so only check equality for one entry
         let bibtex = include_str!("../../../tests/data/bibtex1.bib");
-        let biblio = Bibliography::parse(bibtex).expect("bibtex1 content is a valid bibtex entry");
-        let expected = biblio.iter().next().unwrap();
+        let mut expected = BibTex::new(bibtex.to_owned())
+            .parse()
+            .expect("bibtex1 content is a valid bibtex entry")
+            .into_iter()
+            .next()
+            .unwrap();
 
         let file = std::fs::File::open("./tests/data/bibtex1.bib")
             .expect("Cannot open ./tests/data/bibtex1.bib file for test");
         let mut file: FormatFile<BibTex> = FormatFile::new(file);
 
         let biblio = file.read_ast().unwrap();
-        let res = biblio.iter().next().unwrap();
+        let mut res = biblio.into_iter().next().unwrap();
+
+        // sort fields by name for equality check
+        expected.fields.sort_by(|a, b| a.name.cmp(&b.name));
+        res.fields.sort_by(|a, b| a.name.cmp(&b.name));
 
         assert_eq!(expected, res);
     }

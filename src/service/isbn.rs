@@ -1,4 +1,4 @@
-use biblatex::Entry;
+use crate::ast::Entry;
 
 use super::api::google_books;
 
