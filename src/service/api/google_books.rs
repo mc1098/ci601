@@ -113,50 +113,6 @@ impl TryFrom<Book> for crate::ast::Entry {
     }
 }
 
-// impl TryFrom<Book> for Entry {
-//     type Error = eyre::Report;
-//
-//     fn try_from(book: Book) -> Result<Self> {
-//         // Deconstruct book to take ownership of fields (avoids cloning).
-//         let Book {
-//             isbn,
-//             volume_info:
-//                 VolumeInfo {
-//                     mut authors,
-//                     title,
-//                     publisher,
-//                     published_date: year,
-//                 },
-//         } = book;
-//
-//         // create citation_key based on first author + year.
-//         let mut citation_key = authors
-//             .drain(..)
-//             .next()
-//             .ok_or_else(|| eyre!("Not authors found from resource response"))?;
-//         citation_key.push_str(&year);
-//
-//         let mut entry = Entry::new(citation_key.to_owned(), biblatex::EntryType::Book);
-//
-//         let authors = authors
-//             .into_iter()
-//             .map(Chunk::Normal)
-//             .map(|c| Person::parse(&[c]))
-//             .collect();
-//         entry.set_author(authors);
-//
-//         entry.set_title(vec![Chunk::Normal(title)]);
-//         entry.set_publisher(vec![vec![Chunk::Normal(publisher)]]);
-//
-//         let date = biblatex::Date::parse_three_fields(&[Chunk::Normal(year)], None, None)
-//             .ok_or_else(|| eyre!("Date has an invalid format in resource response"))?;
-//         entry.set_date(date);
-//         entry.set_isbn(vec![Chunk::Normal(isbn)]);
-//
-//         Ok(entry)
-//     }
-// }
-
 #[test]
 fn book_can_be_derived_from_json() {
     let isbn = "0735619670";
