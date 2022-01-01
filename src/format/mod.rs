@@ -1,16 +1,16 @@
-mod bibtex;
-
 use std::marker::PhantomData;
 
+mod bibtex;
+
+use crate::ast::Biblio;
 pub use bibtex::BibTex;
 
-use biblatex::Bibliography;
 use eyre::Result;
 
 pub trait Format {
     fn new(val: String) -> Self;
-    fn parse(self) -> Result<Bibliography>;
-    fn compose(ast: Bibliography) -> Self;
+    fn parse(self) -> Result<Biblio>;
+    fn compose(ast: Biblio) -> Self;
     fn raw(self) -> String;
     fn name() -> &'static str;
     fn ext() -> &'static str;
@@ -21,7 +21,7 @@ pub trait FormatWriter {
 
     fn write(&mut self, format: Self::Format) -> Result<()>;
 
-    fn write_ast(&mut self, ast: Bibliography) -> Result<()> {
+    fn write_ast(&mut self, ast: Biblio) -> Result<()> {
         let format = Self::Format::compose(ast);
         self.write(format)
     }
@@ -32,7 +32,7 @@ pub trait FormatReader {
 
     fn read(&mut self) -> Result<Self::Format>;
 
-    fn read_ast(&mut self) -> Result<Bibliography> {
+    fn read_ast(&mut self) -> Result<Biblio> {
         let format = self.read()?;
         format.parse()
     }
