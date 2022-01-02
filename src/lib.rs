@@ -26,17 +26,6 @@ use service::{get_book_by_isbn, get_entry_by_doi};
 use eyre::{eyre, Result};
 use log::trace;
 
-#[inline]
-fn unique_entry_check<P>(references: &Biblio, predicate: P) -> Result<()>
-where
-    P: Fn(&Entry) -> Result<()>,
-{
-    references
-        .entries()
-        .iter()
-        .try_fold((), |_, e| predicate(e))
-}
-
 /// Seek a bibliography entry by doi and then write it to the writer if it doesn't already exists
 /// in the current bibliography.
 ///
@@ -58,14 +47,9 @@ where
 /// An error in the writer when trying to write the new entry to the writer.
 ///
 pub fn add_by_doi<F: Writer>(doi: &str, writer: &mut F, mut references: Biblio) -> Result<()> {
-    unique_entry_check(&references, |e| {
-        e.fields
-            .iter()
-            .filter(|f| f.name == "doi" && f.value != doi)
-            .map(|_| ())
-            .next()
-            .ok_or_else(|| eyre!("An entry already exists with the doi of '{}'", doi))
-    })?;
+    if references.contains_field("doi", |f| f.value == doi) {
+        return Err(eyre!("An entry already exists with the doi of '{}'", doi));
+    }
 
     let entry = get_entry_by_doi(doi)?;
     references.insert(entry);
@@ -94,14 +78,9 @@ pub fn add_by_doi<F: Writer>(doi: &str, writer: &mut F, mut references: Biblio) 
 ///
 pub fn add_by_isbn<F: Writer>(isbn: &str, writer: &mut F, mut references: Biblio) -> Result<()> {
     trace!("Check if the ISBN '{}' already exists", isbn);
-    unique_entry_check(&references, |e| {
-        e.fields
-            .iter()
-            .filter(|f| f.name == "isbn" && f.value == isbn)
-            .map(|_| ())
-            .next()
-            .ok_or_else(|| eyre!("An entry already exists with the ISBN of '{}'", isbn))
-    })?;
+    if references.contains_field("isbn", |f| f.value == isbn) {
+        return Err(eyre!("An entry already exists with the ISBN of '{}'", isbn));
+    }
 
     let entry = get_book_by_isbn(isbn)?;
     references.insert(entry);
@@ -115,24 +94,6 @@ mod tests {
     use super::*;
 
     const BIBTEX_ENTRY_1: &str = include_str!("../tests/data/bibtex1.bib");
-
-    #[test]
-    #[should_panic(expected = "Duplicate found")]
-    fn err_on_duplicate_entry() {
-        let references = Biblio::new(vec![Entry {
-            cite: "Edelkamp_2019".to_owned(),
-            variant: ast::EntryType::Book,
-            fields: vec![],
-        }]);
-        unique_entry_check(&references, |e| {
-            if e.cite == "Edelkamp_2019" {
-                Err(eyre!("Duplicate found"))
-            } else {
-                Ok(())
-            }
-        })
-        .unwrap();
-    }
 
     #[test]
     #[should_panic(expected = "already exists with the doi")]
