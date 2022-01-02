@@ -5,11 +5,12 @@ use std::{
     path::Path,
 };
 
-use bibadd_core::format::{Format, FormatReader, FormatWriter};
+use bibadd_core::format::{Format, Reader, Writer};
 
 use eyre::{eyre, Context, Result};
 use glob::glob;
 
+#[allow(clippy::module_name_repetitions)]
 pub struct FormatFile<F: Format> {
     file: File,
     _format: PhantomData<F>,
@@ -24,7 +25,7 @@ impl<F: Format> FormatFile<F> {
     }
 }
 
-impl<F: Format> FormatReader for FormatFile<F> {
+impl<F: Format> Reader for FormatFile<F> {
     type Format = F;
 
     fn read(&mut self) -> Result<Self::Format> {
@@ -32,7 +33,7 @@ impl<F: Format> FormatReader for FormatFile<F> {
     }
 }
 
-impl<F: Format> FormatWriter for FormatFile<F> {
+impl<F: Format> Writer for FormatFile<F> {
     type Format = F;
 
     fn write(&mut self, format: F) -> Result<()> {
@@ -151,7 +152,7 @@ mod tests {
         let res = open_file_by_name::<BibTex, _>(path.as_ref());
         file.close().unwrap();
 
-        assert!(res.is_ok())
+        assert!(res.is_ok());
     }
 
     #[test]

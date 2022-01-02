@@ -10,6 +10,6 @@ pub(crate) fn get_entry_info_by_doi(doi: &str) -> eyre::Result<String> {
     client
         .get(url)
         .send()
-        .and_then(|r| r.text())
+        .and_then(reqwest::blocking::Response::text)
         .wrap_err_with(|| eyre!("Cannot create valid reference for this doi"))
 }
