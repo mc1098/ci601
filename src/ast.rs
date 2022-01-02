@@ -20,6 +20,35 @@ impl Biblio {
         &self.0
     }
 
+    /// Tests if any field in this [`Biblio`] matches a predicate.
+    ///
+    /// [`Self::contains_field`] takes a `key` value that should match a [`Field::Name`] and
+    /// [`Self::contains_field`] takes a closure that returns `true` or `false`. It applies this
+    /// closure to each field in each entry of the [`Biblio`], and if any of them return `true`, then
+    /// so does [`Self::contains_field`]. If they all return `false`, it returns `false`.
+    ///
+    /// [`Self::contains_field`] is short-circuiting; in other words, it will stop processing as
+    /// soon as it finds a `true`, given that no matter what else happens, the result will also be
+    /// `true`.
+    ///
+    /// An empty [`Biblio`] will always return `false`.
+    pub fn contains_field<P>(&self, key: &str, predicate: P) -> bool
+    where
+        P: Fn(&Field) -> bool,
+    {
+        // Use find -> map so that find can short-circuit when reaching the correct field key
+        // and then map will only every be applied to one field. If we used both predicates in
+        // the `find` closure then we'd scan all the entries even if we found the correct key
+        // first.
+        self.0.iter().any(|e| {
+            e.fields
+                .iter()
+                .find(|f| f.name == key)
+                .map(&predicate)
+                .unwrap_or_default()
+        })
+    }
+
     /// Sorts the entries and their fields.
     ///
     /// This is a function for use in tests in order to sort items in a [`Vec`] before
@@ -88,4 +117,25 @@ pub struct Field {
     pub name: String,
     /// Value of the entry field.
     pub value: String,
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn false_on_duplicate_field() {
+        let references = Biblio::new(vec![Entry {
+            cite: "Edelkamp_2019".to_owned(),
+            variant: EntryType::Book,
+            fields: vec![Field {
+                name: "doi".to_owned(),
+                value: "test".to_owned(),
+            }],
+        }]);
+
+        assert!(references.contains_field("doi", |f| f.value == "test"));
+        assert!(!references.contains_field("doi", |f| f.value == "something else"));
+    }
 }
