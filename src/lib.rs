@@ -19,7 +19,7 @@ pub mod format;
 pub mod parse;
 mod service;
 
-use ast::{Biblio, Entry};
+pub use ast::{Biblio, Entry, EntryType, Field};
 use format::Writer;
 use service::{get_book_by_isbn, get_entry_by_doi};
 
