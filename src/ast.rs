@@ -20,7 +20,7 @@ impl Biblio {
     /// a equality check is performed.
     #[cfg(test)]
     pub fn sort_entries(&mut self) {
-        for entry in self.0.iter_mut() {
+        for entry in &mut self.0 {
             entry.fields.sort_by(|a, b| a.name.cmp(&b.name));
         }
 

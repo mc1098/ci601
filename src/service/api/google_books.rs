@@ -1,5 +1,5 @@
 use eyre::{eyre, Context, Result};
-use log::*;
+use log::{info, trace};
 use serde::Deserialize;
 
 const GOOGLE_BOOKS_URL: &str = "https:://www.googleapis.com/books/v1/volumes?q=isbn:";
@@ -13,7 +13,7 @@ pub(crate) fn get_book_info(isbn: &str) -> Result<Book> {
     let GoogleModel { mut items } = client
         .get(&url)
         .send()
-        .and_then(|r| r.json())
+        .and_then(reqwest::blocking::Response::json)
         .wrap_err_with(|| eyre!("Cannot create valid reference for this ISBN"))?;
 
     trace!("Request was successful");
@@ -60,6 +60,7 @@ struct VolumeInfo {
 
 impl Item {
     // We use a builder pattern here to enforce a valid [`Book`] is always returned.
+    #[allow(clippy::missing_const_for_fn)] // can't be const
     fn build(self, isbn: String) -> Book {
         Book {
             isbn,

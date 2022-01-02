@@ -1,8 +1,18 @@
+#![deny(
+    clippy::all,
+    clippy::pedantic,
+    clippy::perf,
+    clippy::style,
+    clippy::missing_safety_doc,
+    clippy::missing_const_for_fn
+)]
+#![allow(clippy::as_conversions, clippy::mod_module_files)]
+
 use std::{error, process};
 
 mod file;
-use crate::file::*;
-use bibadd_core::format::{BibTex, FormatReader};
+use crate::file::{find_format_file_in_current_directory, open_file_by_name};
+use bibadd_core::format::{BibTex, Reader};
 
 use clap::{AppSettings, Parser, Subcommand};
 use log::{error, trace};

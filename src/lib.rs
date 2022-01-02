@@ -1,10 +1,26 @@
+#![deny(
+    clippy::all,
+    clippy::pedantic,
+    clippy::perf,
+    clippy::style,
+    clippy::missing_safety_doc,
+    clippy::missing_const_for_fn,
+    missing_docs
+)]
+
+//! # bibadd-core
+//!
+//! bibadd-core is a library which supports searching for bibliography entries from select APIs
+//! and adding them to an in memory bibliography. bibadd-core supports transforming the in-memory
+//! bibliography to [`format::Format`]s such as [`format::BibTex`].
+
 mod ast;
 pub mod format;
 pub mod parse;
 mod service;
 
 use ast::{Biblio, Entry};
-use format::FormatWriter;
+use format::Writer;
 use service::{get_book_by_isbn, get_entry_by_doi};
 
 use eyre::{eyre, Result};
@@ -21,18 +37,31 @@ where
         .try_fold((), |_, e| predicate(e))
 }
 
-pub fn add_by_doi<F: FormatWriter>(
-    doi: &str,
-    writer: &mut F,
-    mut references: Biblio,
-) -> Result<()> {
+/// Seek a bibliography entry by doi and then write it to the writer if it doesn't already exists
+/// in the current bibliography.
+///
+/// # Errors
+///
+/// All errors are [`eyre::Report`]s so are not designed to be caught but to be propagated up.
+///
+/// Duplicate entry:
+/// When an entry with the given doi already exists.
+///
+/// Doi not found:
+/// When the doi is not valid or a resource cannot be found the given doi.
+///
+/// Doi resource found but cannot be parsed correctly:
+/// When a resource was found for the doi but the returned information could not parsed correctly
+/// to create a valid [`Biblio`].
+///
+/// Writer error:
+/// An error in the writer when trying to write the new entry to the writer.
+///
+pub fn add_by_doi<F: Writer>(doi: &str, writer: &mut F, mut references: Biblio) -> Result<()> {
     unique_entry_check(&references, |e| {
         e.fields
             .iter()
-            .filter(|f| {
-                println!("name: {}\tvalue: {}\t 'doi' = {}", f.name, f.value, doi);
-                f.name == "doi" && f.value != doi
-            })
+            .filter(|f| f.name == "doi" && f.value != doi)
             .map(|_| ())
             .next()
             .ok_or_else(|| eyre!("An entry already exists with the doi of '{}'", doi))
@@ -43,11 +72,27 @@ pub fn add_by_doi<F: FormatWriter>(
     writer.write_ast(references)
 }
 
-pub fn add_by_isbn<F: FormatWriter>(
-    isbn: &str,
-    writer: &mut F,
-    mut references: Biblio,
-) -> Result<()> {
+/// Seek a bibliography entry by isbn and then write it to the writer if it doesn't already exists
+/// in the current bibliography.
+///
+/// # Errors
+///
+/// All errors are [`eyre::Report`]s so are not designed to be caught but to be propagated up.
+///
+/// Duplicate entry:
+/// When an entry with the given isbn already exists.
+///
+/// ISBN not found:
+/// When the ISBN is not valid or a resource cannot be found the given doi.
+///
+/// ISBN resource found but cannot be parsed correctly:
+/// When a resource was found for the ISBN but the returned information could not parsed correctly
+/// to create a valid [`Biblio`].
+///
+/// Writer error:
+/// An error in the writer when trying to write the new entry to the writer.
+///
+pub fn add_by_isbn<F: Writer>(isbn: &str, writer: &mut F, mut references: Biblio) -> Result<()> {
     trace!("Check if the ISBN '{}' already exists", isbn);
     unique_entry_check(&references, |e| {
         e.fields

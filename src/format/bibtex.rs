@@ -5,6 +5,7 @@ use super::Format;
 use biblatex::{Bibliography, ChunksExt};
 use eyre::{eyre, Result};
 
+/// A type wrapper around [`String`] to represent a `BibTex` format string.
 #[derive(Debug)]
 pub struct BibTex(String);
 
@@ -26,7 +27,7 @@ impl Format for BibTex {
             .map(|entry| {
                 format!(
                     "@{}{{{},\n{}}}\n",
-                    compose_type(entry.variant),
+                    compose_type(&entry.variant),
                     entry.cite,
                     compose_fields(&entry.fields)
                 )
@@ -48,7 +49,7 @@ impl Format for BibTex {
     }
 }
 
-fn compose_type(entry_type: ast::EntryType) -> &'static str {
+const fn compose_type(entry_type: &ast::EntryType) -> &'static str {
     match entry_type {
         ast::EntryType::Article => "article",
         ast::EntryType::Book => "book",
