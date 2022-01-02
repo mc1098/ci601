@@ -16,7 +16,6 @@ stderrlog = "0.5.1"
 [dev-dependencies]
 assert_cmd = "2.0.2"
 assert_fs = "1.0.6"
-predicates = "2.1.0"
 serde_json = "1.0.73"
 
 [features]
