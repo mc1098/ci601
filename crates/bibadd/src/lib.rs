@@ -7,6 +7,7 @@
     clippy::missing_const_for_fn,
     missing_docs
 )]
+#![allow(clippy::module_name_repetitions)]
 
 //! # bibadd-core
 //!
@@ -21,7 +22,7 @@ mod service;
 
 pub use ast::{Biblio, Entry, EntryType, Field};
 use format::Writer;
-use service::{get_book_by_isbn, get_entry_by_doi};
+pub use service::{get_book_by_isbn, get_entry_by_doi};
 
 use eyre::{eyre, Result};
 use log::trace;
@@ -93,7 +94,7 @@ mod tests {
 
     use super::*;
 
-    const BIBTEX_ENTRY_1: &str = include_str!("../tests/data/bibtex1.bib");
+    const BIBTEX_ENTRY_1: &str = include_str!("../../../tests/data/bibtex1.bib");
 
     #[test]
     #[should_panic(expected = "already exists with the doi")]

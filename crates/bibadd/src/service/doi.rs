@@ -7,7 +7,13 @@ use super::api::cross_ref;
 
 use eyre::eyre;
 
-pub(crate) fn get_entry_by_doi(doi: &str) -> eyre::Result<Entry> {
+/// Seek a bibliography entry using a `doi`.
+///
+/// # Errors
+///
+/// When the `doi` cannot be found by the service or if the resulting information cannot be used
+/// to create a valid [`Entry`].
+pub fn get_entry_by_doi(doi: &str) -> eyre::Result<Entry> {
     let entry_info = cross_ref::get_entry_info_by_doi(doi)?;
 
     BibTex::new(entry_info)

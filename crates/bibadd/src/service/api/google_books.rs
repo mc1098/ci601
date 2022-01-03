@@ -117,7 +117,7 @@ impl TryFrom<Book> for crate::ast::Entry {
 #[test]
 fn book_can_be_derived_from_json() {
     let isbn = "0735619670";
-    let json = include_str!("../../../tests/data/google_book_json.txt");
+    let json = include_str!("../../../../../tests/data/google_book_json.txt");
     let mut model: GoogleModel = serde_json::from_str(json).unwrap();
     let book = &model.items.remove(0).build(isbn.to_owned());
 
