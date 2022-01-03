@@ -140,7 +140,7 @@ mod tests {
 
     #[test]
     fn parse_then_compose_bibtex() {
-        let bibtex_str = include_str!("../../tests/data/bibtex1.bib");
+        let bibtex_str = include_str!("../../../../tests/data/bibtex1.bib");
         let bibtex = BibTex::new(bibtex_str.to_owned());
         let mut parsed = bibtex.parse().expect("bibtex1.bib is a valid bibtex entry");
 
