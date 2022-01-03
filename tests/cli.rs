@@ -11,7 +11,7 @@ use std::process::Command;
 // to perform these checks at compile time which may invalidate the need for this test.
 #[test]
 fn check_clap_cli_help() -> Result<(), Box<dyn std::error::Error>> {
-    let mut cmd = Command::cargo_bin("bibadd")?;
+    let mut cmd = Command::cargo_bin("seb")?;
 
     cmd.arg("--help");
     cmd.assert().success();

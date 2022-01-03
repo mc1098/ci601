@@ -5,7 +5,7 @@ use std::{
     path::Path,
 };
 
-use bibadd::format::{Format, Reader, Writer};
+use seb::format::{Format, Reader, Writer};
 
 use eyre::{eyre, Context, Result};
 use glob::glob;
@@ -121,7 +121,7 @@ fn read_file_to_string(file: &mut File) -> Result<String> {
 mod tests {
 
     use super::*;
-    use bibadd::format::BibTex;
+    use seb::format::BibTex;
 
     use assert_fs::{
         fixture::{FileTouch, PathChild},
