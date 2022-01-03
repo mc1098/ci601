@@ -58,8 +58,8 @@ fn try_main() -> Result<(), Box<dyn error::Error>> {
 }
 
 #[derive(Parser)]
-#[clap(name = "bibadd")]
-#[clap(about = "Search and add references easily to reference files easily in the terminal")]
+#[clap(name = "seb")]
+#[clap(about = "Seek and edit bibliographic entries to a supported format file in the terminal")]
 #[clap(version, author)]
 struct Cli {
     #[clap(subcommand)]
