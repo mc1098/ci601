@@ -1,5 +1,5 @@
 [package]
-name = "bibadd_cli"
+name = "seb_cli"
 version = "0.1.0"
 edition = "2021"
 
@@ -12,7 +12,7 @@ log = "0.4.14"
 reqwest = { version = "0.11", features = ["blocking", "json"] }
 serde = { version = "1.0.132", features = ["derive"] }
 stderrlog = "0.5.1"
-bibadd = { path = "crates/bibadd" }
+seb = { path = "crates/seb" }
 
 [dev-dependencies]
 assert_cmd = "2.0.2"
@@ -23,9 +23,9 @@ serde_json = "1.0.73"
 [[bin]]
 bench = false
 path = "crates/core/main.rs"
-name = "bibadd"
+name = "seb"
 
 [workspace]
 members = [
-  "crates/bibadd",
+  "crates/seb",
 ]

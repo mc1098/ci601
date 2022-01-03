@@ -13,7 +13,7 @@ use std::{error, process};
 mod file;
 use file::{find_format_file_in_current_directory, open_file_by_name};
 
-use bibadd as lib;
+use seb as lib;
 
 use lib::format::{BibTex, Reader};
 
