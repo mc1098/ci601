@@ -20,6 +20,13 @@ impl Biblio {
         &self.0
     }
 
+    /// Creates entries from a value.
+    #[must_use]
+    #[allow(clippy::missing_const_for_fn)] // drop is not const
+    pub fn into_entries(self) -> Vec<Entry> {
+        self.0
+    }
+
     /// Tests if any field in this [`Biblio`] matches a predicate.
     ///
     /// [`Self::contains_field`] takes a `key` value that should match a [`Field::Name`] and
@@ -86,6 +93,37 @@ pub struct Entry {
 
     /// List of [`Field`]s, which are essentially key-value pairs.
     pub fields: Vec<Field>,
+}
+
+impl std::fmt::Display for Entry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let ty = match &self.variant {
+            EntryType::Article => "article",
+            EntryType::Bill => "bill",
+            EntryType::Book => "book",
+            EntryType::Booklet => "booklet",
+            EntryType::Conference => "conference",
+            EntryType::Document => "document",
+            EntryType::InCollection => "incollection",
+            EntryType::Manual => "manual",
+            EntryType::Software => "software",
+            EntryType::Report => "report",
+            EntryType::MasterThesis => "masterthesis",
+            EntryType::PhdThesis => "phdthesis",
+            EntryType::Paper => "paper",
+            EntryType::Webpage => "webpage",
+            EntryType::Other(s) => s,
+        };
+
+        write!(f, "Type: {} ", ty)?;
+        let title = self
+            .fields
+            .iter()
+            .find(|f| f.name == "title")
+            .map_or("Unknown title", |f| f.value.as_str());
+
+        writeln!(f, "Title: {}", title)
+    }
 }
 
 /// The type of a bibliography entry.

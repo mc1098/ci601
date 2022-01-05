@@ -2,13 +2,14 @@ use std::{
     fs::{File, OpenOptions},
     io::{Read, Write},
     marker::PhantomData,
-    path::Path,
+    path::{Path, PathBuf},
 };
 
 use seb::format::{Format, Reader, Writer};
 
 use eyre::{eyre, Context, Result};
 use glob::glob;
+use log::{info, trace};
 
 #[allow(clippy::module_name_repetitions)]
 pub struct FormatFile<F: Format> {
@@ -44,6 +45,27 @@ impl<F: Format> Writer for FormatFile<F> {
     }
 }
 
+#[allow(clippy::module_name_repetitions)]
+pub fn open_or_create_format_file<F: Format>(file_name: Option<String>) -> Result<FormatFile<F>> {
+    if let Some(path) = file_name {
+        trace!("opening {} file as a {} file", path, F::name());
+        open_file_by_name::<F, _>(path)
+    } else {
+        trace!("Searching current directory for any {} files", F::name());
+        if let Ok(file) = find_format_file_in_current_directory() {
+            Ok(file)
+        } else {
+            let new_file = format!("bibliography.{}", F::ext());
+            info!(
+                "No .{} file found in current directory - creating a new {} file",
+                F::ext(),
+                new_file
+            );
+            create_file_by_name::<F, _>(PathBuf::from(new_file))
+        }
+    }
+}
+
 #[inline]
 fn open_file_for_read_and_append<F: Format>(path: &Path) -> Result<FormatFile<F>> {
     OpenOptions::new()
@@ -59,7 +81,23 @@ fn open_file_for_read_and_append<F: Format>(path: &Path) -> Result<FormatFile<F>
         })
 }
 
-pub fn open_file_by_name<F, P>(file_name: P) -> Result<FormatFile<F>>
+#[inline]
+fn create_file_for_read_and_write<F: Format>(path: &Path) -> Result<FormatFile<F>> {
+    OpenOptions::new()
+        .create_new(true)
+        .read(true)
+        .write(true)
+        .open(path)
+        .map(FormatFile::<F>::new)
+        .wrap_err_with(|| {
+            format!(
+                "Failed to open the '{}' file for reading and appending.",
+                path.display()
+            )
+        })
+}
+
+fn open_file_by_name<F, P>(file_name: P) -> Result<FormatFile<F>>
 where
     F: Format,
     P: AsRef<Path>,
@@ -69,8 +107,18 @@ where
     open_file_for_read_and_append(path_buf.as_path())
 }
 
+fn create_file_by_name<F, P>(file_name: P) -> Result<FormatFile<F>>
+where
+    F: Format,
+    P: AsRef<Path>,
+{
+    let path = file_name.as_ref();
+    let path_buf = path.with_extension(F::ext());
+    create_file_for_read_and_write(path_buf.as_path())
+}
+
 #[inline]
-pub fn find_format_file_in_current_directory<F: Format>() -> Result<FormatFile<F>> {
+fn find_format_file_in_current_directory<F: Format>() -> Result<FormatFile<F>> {
     let path = Path::new(".").with_extension(F::ext());
     find_format_file_in_directory(path)
 }

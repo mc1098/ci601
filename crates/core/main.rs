@@ -10,19 +10,16 @@
 
 use std::{error, process};
 
+mod app;
 mod file;
-use file::{find_format_file_in_current_directory, open_file_by_name};
-
-use seb as lib;
-
-use lib::format::{BibTex, Reader};
 
 use clap::{AppSettings, Parser, Subcommand};
-use log::{error, trace};
+use log::{info, trace};
+use seb::format::{BibTex, Reader, Writer};
 
 fn main() {
     if let Err(err) = try_main() {
-        error!("{:#}", err);
+        eprintln!("{}", err);
         process::exit(2);
     }
 }
@@ -39,21 +36,32 @@ fn try_main() -> Result<(), Box<dyn error::Error>> {
 
     stderrlog::new().verbosity(verbosity).init()?;
 
-    let mut file = if let Some(file_name) = cli.file {
-        trace!("'file' option used with value of '{}'", file_name);
-        open_file_by_name::<BibTex, _>(file_name)?
-    } else {
-        trace!("'file' option not used - try and find any .bib files in current directory");
-        find_format_file_in_current_directory::<BibTex>()?
+    let mut file = file::open_or_create_format_file::<BibTex>(cli.file)?;
+
+    let mut biblio = file.read_ast()?;
+
+    let entry = match &cli.command {
+        Commands::Doi { doi } => {
+            trace!("doi subcommand called with value of '{}'", doi);
+            info!("Checking current bibliography for possible duplicate doi..");
+            app::check_entry_field_duplication(&biblio, "doi", doi)?;
+            info!("No duplicate found!");
+            app::select_entry_by_doi(doi)?
+        }
+        Commands::Isbn { isbn } => {
+            trace!("isbn subcommand called with value of '{}'", isbn);
+            info!("Checking current bibliography for possible duplicate isbn..");
+            app::check_entry_field_duplication(&biblio, "isbn", isbn)?;
+            info!("No duplicate found!");
+            app::select_entry_by_isbn(isbn)?
+        }
     };
 
-    let biblio = file.read_ast()?;
+    biblio.insert(entry);
 
-    match &cli.command {
-        Commands::Doi { doi } => lib::add_by_doi(doi, &mut file, biblio)?,
-        Commands::Isbn { isbn } => lib::add_by_isbn(isbn, &mut file, biblio)?,
-    }
-
+    info!("Adding selected entry into bibliography");
+    file.write_ast(biblio)?;
+    info!("Done!");
     Ok(())
 }
 
