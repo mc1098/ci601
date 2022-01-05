@@ -1,2 +1,2 @@
-pub(super) mod cross_ref;
-pub(super) mod google_books;
+pub(crate) mod cross_ref;
+pub(crate) mod google_books;

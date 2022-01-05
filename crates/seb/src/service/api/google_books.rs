@@ -2,7 +2,15 @@ use eyre::{eyre, Context, Result};
 use log::{info, trace};
 use serde::Deserialize;
 
+use crate::Entry;
+
 const GOOGLE_BOOKS_URL: &str = "https:://www.googleapis.com/books/v1/volumes?q=isbn:";
+
+pub(crate) fn get_entries_by_isbn(isbn: &str) -> Result<Vec<Entry>> {
+    get_book_info(isbn)
+        .and_then(Entry::try_from)
+        .map(|e| vec![e])
+}
 
 pub(crate) fn get_book_info(isbn: &str) -> Result<Book> {
     info!("Searching for ISBN '{}' using Google Books API", isbn);

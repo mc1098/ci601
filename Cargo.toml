@@ -13,6 +13,7 @@ reqwest = { version = "0.11", features = ["blocking", "json"] }
 serde = { version = "1.0.132", features = ["derive"] }
 stderrlog = "0.5.1"
 seb = { path = "crates/seb" }
+dialoguer = "0.9.0"
 
 [dev-dependencies]
 assert_cmd = "2.0.2"
