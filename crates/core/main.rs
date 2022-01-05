@@ -8,7 +8,7 @@
 )]
 #![allow(clippy::as_conversions, clippy::mod_module_files)]
 
-use std::{error, process};
+use std::{error, path::PathBuf, process};
 
 mod app;
 mod file;
@@ -74,8 +74,8 @@ struct Cli {
     command: Commands,
 
     /// The name of the file
-    #[clap(short, long)]
-    file: Option<String>,
+    #[clap(short, long, parse(from_os_str))]
+    file: Option<PathBuf>,
 
     /// How chatty the program is when performing commands
     ///

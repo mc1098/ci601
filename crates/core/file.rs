@@ -46,22 +46,22 @@ impl<F: Format> Writer for FormatFile<F> {
 }
 
 #[allow(clippy::module_name_repetitions)]
-pub fn open_or_create_format_file<F: Format>(file_name: Option<String>) -> Result<FormatFile<F>> {
+pub fn open_or_create_format_file<F: Format>(file_name: Option<PathBuf>) -> Result<FormatFile<F>> {
     if let Some(path) = file_name {
-        trace!("opening {} file as a {} file", path, F::name());
-        open_file_by_name::<F, _>(path)
+        trace!("opening {} file as a {} file", path.display(), F::name());
+        open_file_by_name(&path)
     } else {
         trace!("Searching current directory for any {} files", F::name());
         if let Ok(file) = find_format_file_in_current_directory() {
             Ok(file)
         } else {
-            let new_file = format!("bibliography.{}", F::ext());
+            let path = PathBuf::from("bibliography").with_extension(F::ext());
             info!(
-                "No .{} file found in current directory - creating a new {} file",
+                "No .{} file found in current directory - creating the new file `{}`",
                 F::ext(),
-                new_file
+                path.display()
             );
-            create_file_by_name::<F, _>(PathBuf::from(new_file))
+            create_file_by_name(&path)
         }
     }
 }
@@ -97,22 +97,18 @@ fn create_file_for_read_and_write<F: Format>(path: &Path) -> Result<FormatFile<F
         })
 }
 
-fn open_file_by_name<F, P>(file_name: P) -> Result<FormatFile<F>>
+fn open_file_by_name<F>(path: &Path) -> Result<FormatFile<F>>
 where
     F: Format,
-    P: AsRef<Path>,
 {
-    let path = file_name.as_ref();
     let path_buf = path.with_extension(F::ext());
     open_file_for_read_and_append(path_buf.as_path())
 }
 
-fn create_file_by_name<F, P>(file_name: P) -> Result<FormatFile<F>>
+fn create_file_by_name<F>(path: &Path) -> Result<FormatFile<F>>
 where
     F: Format,
-    P: AsRef<Path>,
 {
-    let path = file_name.as_ref();
     let path_buf = path.with_extension(F::ext());
     create_file_for_read_and_write(path_buf.as_path())
 }
@@ -182,7 +178,7 @@ mod tests {
     )]
     #[should_panic(expected = "Not Found")]
     fn err_when_trying_to_open_bib_file_that_does_not_exist() {
-        open_file_by_name::<BibTex, _>("file does not exist").unwrap();
+        open_file_by_name::<BibTex>(&PathBuf::from("file does not exist")).unwrap();
     }
 
     fn create_temp_file(name: &str) -> NamedTempFile {
@@ -196,8 +192,8 @@ mod tests {
     #[test]
     fn open_temp_bib_file_with_ext() {
         let file = create_temp_file("temp.bib");
-        let path = NamedTempFile::path(&file).to_string_lossy();
-        let res = open_file_by_name::<BibTex, _>(path.as_ref());
+        let path = NamedTempFile::path(&file);
+        let res = open_file_by_name::<BibTex>(path);
         file.close().unwrap();
 
         assert!(res.is_ok());
@@ -208,8 +204,7 @@ mod tests {
         let file = create_temp_file("temp.bib");
         // remove ext from temp path
         let path = NamedTempFile::path(&file).with_extension("");
-        let name = path.to_string_lossy();
-        let res = open_file_by_name::<BibTex, _>(name.as_ref());
+        let res = open_file_by_name::<BibTex>(&path);
         file.close().unwrap();
 
         assert!(res.is_ok());
