@@ -15,13 +15,12 @@
 //! and adding them to an in memory bibliography. bibadd-core supports transforming the in-memory
 //! bibliography to [`format::Format`]s such as [`format::BibTex`].
 
+mod api;
 mod ast;
 pub mod format;
 pub mod parse;
-mod service;
 
 pub use ast::{Biblio, Entry, EntryType, Field};
-pub(crate) use service::api;
 
 use eyre::Result;
 use log::trace;
