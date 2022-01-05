@@ -30,3 +30,5 @@ name = "seb"
 members = [
   "crates/seb",
 ]
+
+[features]

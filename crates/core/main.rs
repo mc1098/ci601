@@ -57,11 +57,15 @@ fn try_main() -> Result<(), Box<dyn error::Error>> {
         }
     };
 
+    let cite_key = entry.cite.clone();
+
     biblio.insert(entry);
 
     info!("Adding selected entry into bibliography");
     file.write_ast(biblio)?;
     info!("Done!");
+    println!("Entry added to bibliography with cite key:");
+    println!("{}", cite_key);
     Ok(())
 }
 
