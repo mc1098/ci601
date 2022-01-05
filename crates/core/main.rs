@@ -67,7 +67,7 @@ fn try_main() -> Result<(), Box<dyn error::Error>> {
 
 #[derive(Parser)]
 #[clap(name = "seb")]
-#[clap(about = "Seek and edit bibliographic entries to a supported format file in the terminal")]
+#[clap(about = "Search and edit bibliographic entries to a supported format file in the terminal")]
 #[clap(version, author)]
 struct Cli {
     #[clap(subcommand)]

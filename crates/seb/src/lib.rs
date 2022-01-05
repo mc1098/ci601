@@ -26,9 +26,9 @@ pub(crate) use service::api;
 use eyre::Result;
 use log::trace;
 
-/// Seek bibliographic entries by `doi` using the default API.
+/// Search bibliographic entries by `doi` using the default API.
 ///
-/// Seeking by `doi` should only return a single [`Entry`] but a [`Vec`] is used to provide a
+/// Searching by `doi` should only return a single [`Entry`] but a [`Vec`] is used to provide a
 /// consistent API across all `entries_by_*` functions.
 ///
 /// # Errors
@@ -37,13 +37,13 @@ use log::trace;
 /// An [`Err`] is returned when the response from the API cannot be parsed into a valid [`Entry`].
 #[inline]
 pub fn entries_by_doi(doi: &str) -> Result<Vec<Entry>> {
-    trace!("Seek entries by doi of '{}'", doi);
+    trace!("Search entries by doi of '{}'", doi);
     api::cross_ref::get_entries_by_doi(doi)
 }
 
-/// Seek bibliographic entries by `isbn` using the default API.
+/// Search bibliographic entries by `isbn` using the default API.
 ///
-/// Seeking by `isbn` should only return a single [`Entry`] but a [`Vec`] is used to provide a
+/// Searching by `isbn` should only return a single [`Entry`] but a [`Vec`] is used to provide a
 /// consistent API across all `entries_by_*` functions.
 ///
 /// # Errors
@@ -52,6 +52,6 @@ pub fn entries_by_doi(doi: &str) -> Result<Vec<Entry>> {
 /// An [`Err`] is returned when the response from the API cannot be parsed into a valid [`Entry`].
 #[inline]
 pub fn entries_by_isbn(isbn: &str) -> Result<Vec<Entry>> {
-    trace!("Seek entries by ISBN of '{}'", isbn);
+    trace!("Search entries by ISBN of '{}'", isbn);
     api::google_books::get_entries_by_isbn(isbn)
 }
