@@ -5,7 +5,7 @@ fn user_select(mut entries: Vec<Entry>) -> Result<Entry> {
     let selection = dialoguer::Select::with_theme(&dialoguer::theme::ColorfulTheme::default())
         .with_prompt("Confirm entry")
         .default(0)
-        .items(&entries)
+        .items(&entries_titles(&entries))
         .interact_opt()
         .unwrap();
 
@@ -14,6 +14,18 @@ fn user_select(mut entries: Vec<Entry>) -> Result<Entry> {
     } else {
         Err(eyre!("No entry confirmed - cancelling operation"))
     }
+}
+
+fn entries_titles(entries: &[Entry]) -> Vec<String> {
+    entries
+        .iter()
+        .filter_map(|e| {
+            e.fields
+                .iter()
+                .find(|f| f.name == "title")
+                .map(|f| f.value.clone())
+        })
+        .collect()
 }
 
 pub fn select_entry_by_doi(doi: &str) -> Result<Entry> {
