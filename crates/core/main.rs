@@ -31,7 +31,7 @@ fn try_main() -> Result<(), Box<dyn error::Error>> {
     let verbosity = if cli.quiet {
         1
     } else {
-        cli.verbosity as usize + 1
+        cli.verbosity as usize + 2
     };
 
     stderrlog::new().verbosity(verbosity).init()?;
