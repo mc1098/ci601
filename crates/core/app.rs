@@ -17,19 +17,12 @@ fn user_select(mut entries: Vec<Entry>) -> Result<Entry> {
 }
 
 fn entries_titles(entries: &[Entry]) -> Vec<String> {
-    entries
-        .iter()
-        .filter_map(|e| {
-            e.fields
-                .iter()
-                .find(|f| f.name == "title")
-                .map(|f| f.value.clone())
-        })
-        .collect()
+    entries.iter().map(|e| e.title.clone()).collect()
 }
 
 pub fn select_entry_by_doi(doi: &str) -> Result<Entry> {
     let entries = seb::entries_by_doi(doi)?;
+    dbg!("{:?}", &entries);
 
     user_select(entries)
 }
