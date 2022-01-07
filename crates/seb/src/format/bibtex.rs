@@ -26,9 +26,10 @@ impl Format for BibTex {
             .into_iter()
             .map(|entry| {
                 format!(
-                    "@{}{{{},\n{}}}\n",
+                    "@{}{{{},\n    title = {{{}}},\n{}}}\n",
                     compose_type(&entry.variant),
                     entry.cite,
+                    entry.title,
                     compose_fields(&entry.fields)
                 )
             })
@@ -96,7 +97,7 @@ impl From<biblatex::Entry> for ast::Entry {
             _ => ast::EntryType::Other(entry_type.to_string()),
         };
 
-        let fields = fields
+        let mut fields: Vec<ast::Field> = fields
             .drain()
             .map(|(k, v)| ast::Field {
                 name: k,
@@ -104,8 +105,17 @@ impl From<biblatex::Entry> for ast::Entry {
             })
             .collect();
 
+        let index = fields
+            .iter()
+            .enumerate()
+            .find(|(_, f)| f.name == "title")
+            .map(|(i, _)| i);
+
+        let title = index.map(|i| fields.remove(i).value).unwrap_or_default();
+
         Self {
             cite,
+            title,
             variant,
             fields,
         }
@@ -118,23 +128,18 @@ mod tests {
     use super::*;
 
     fn fields() -> Vec<ast::Field> {
-        vec![
-            ast::Field {
-                name: "author".to_owned(),
-                value: "Me".to_owned(),
-            },
-            ast::Field {
-                name: "title".to_owned(),
-                value: "Test".to_owned(),
-            },
-        ]
+        vec![ast::Field {
+            name: "author".to_owned(),
+            value: "Me".to_owned(),
+        }]
     }
 
     fn entries() -> Vec<ast::Entry> {
         vec![ast::Entry {
             cite: "entry1".to_owned(),
+            title: "Test".to_owned(),
             variant: ast::EntryType::Book,
-            fields: fields()[..2].to_vec(),
+            fields: fields()[..1].to_vec(),
         }]
     }
 
@@ -163,7 +168,7 @@ mod tests {
         let fields = fields();
         let result = compose_fields(&fields);
 
-        assert_eq!("    author = {Me},\n    title = {Test},\n", result);
+        assert_eq!("    author = {Me},\n", result);
     }
 
     #[test]
@@ -173,8 +178,8 @@ mod tests {
 
         // indents and newlines are important in this string so don't format!
         let expected = "@book{entry1,
-    author = {Me},
     title = {Test},
+    author = {Me},
 }\n";
 
         assert_eq!(expected, result.raw());

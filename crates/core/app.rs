@@ -66,6 +66,7 @@ fn field_dup_macro() {
 
     bib.insert(seb::Entry {
         cite: String::new(),
+        title: "test".to_owned(),
         variant: seb::EntryType::Book,
         fields: vec![seb::Field {
             name: name.to_owned(),

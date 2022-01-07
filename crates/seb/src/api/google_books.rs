@@ -103,7 +103,6 @@ impl TryFrom<Book> for crate::ast::Entry {
         let fields = [
             ("isbn", isbn),
             ("authors", authors.join(",")),
-            ("title", title),
             ("publisher", publisher),
             ("year", year),
         ]
@@ -116,6 +115,7 @@ impl TryFrom<Book> for crate::ast::Entry {
 
         Ok(Self {
             cite,
+            title,
             variant: crate::ast::EntryType::Book,
             fields,
         })

@@ -85,6 +85,10 @@ impl IntoIterator for Biblio {
 pub struct Entry {
     /// The citation key for the entry
     pub cite: String,
+
+    /// The title or equivalent of the entry
+    pub title: String,
+
     /// The type of entry.
     ///
     /// [`format::Format`] implementations are free to interpret this type as a more specific type
@@ -135,6 +139,7 @@ mod tests {
     fn false_on_duplicate_field() {
         let references = Biblio::new(vec![Entry {
             cite: "Edelkamp_2019".to_owned(),
+            title: "QuickXsort: A Fast Sorting Scheme in Theory and Practice".to_owned(),
             variant: EntryType::Book,
             fields: vec![Field {
                 name: "doi".to_owned(),
