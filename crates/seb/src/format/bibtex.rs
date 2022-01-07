@@ -108,7 +108,7 @@ impl From<biblatex::Entry> for ast::Entry {
         let index = fields
             .iter()
             .enumerate()
-            .find(|(_, f)| f.name == "title")
+            .find(|(_, f)| f.name == "title" || f.name == "booktitle")
             .map(|(i, _)| i);
 
         let title = index.map(|i| fields.remove(i).value).unwrap_or_default();
