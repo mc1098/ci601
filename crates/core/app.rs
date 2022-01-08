@@ -1,7 +1,7 @@
 use eyre::{eyre, Result};
 use seb::Entry;
 
-fn user_select(mut entries: Vec<Entry>) -> Result<Entry> {
+pub fn user_select(mut entries: Vec<Entry>) -> Result<Entry> {
     let selection = dialoguer::Select::with_theme(&dialoguer::theme::ColorfulTheme::default())
         .with_prompt("Confirm entry")
         .default(0)
@@ -18,19 +18,6 @@ fn user_select(mut entries: Vec<Entry>) -> Result<Entry> {
 
 fn entries_titles(entries: &[Entry]) -> Vec<String> {
     entries.iter().map(|e| e.title.clone()).collect()
-}
-
-pub fn select_entry_by_doi(doi: &str) -> Result<Entry> {
-    let entries = seb::entries_by_doi(doi)?;
-    dbg!("{:?}", &entries);
-
-    user_select(entries)
-}
-
-pub fn select_entry_by_isbn(isbn: &str) -> Result<Entry> {
-    let entries = seb::entries_by_isbn(isbn)?;
-
-    user_select(entries)
 }
 
 pub fn check_entry_field_duplication(
