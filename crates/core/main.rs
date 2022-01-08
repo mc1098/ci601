@@ -14,8 +14,12 @@ mod app;
 mod file;
 
 use clap::{AppSettings, Parser, Subcommand};
+use eyre::eyre;
 use log::{info, trace};
-use seb::format::{BibTex, Reader, Writer};
+use seb::{
+    format::{BibTex, Reader, Writer},
+    Entry,
+};
 
 fn main() {
     if let Err(err) = try_main() {
@@ -25,39 +29,36 @@ fn main() {
 }
 
 fn try_main() -> Result<(), Box<dyn error::Error>> {
-    let cli = Cli::parse();
+    let Cli {
+        command,
+        file,
+        verbosity,
+        cite,
+        quiet,
+        confirm,
+    } = Cli::parse();
 
-    // if quiet then ignore verbosity but still show errors
-    let verbosity = if cli.quiet {
-        1
-    } else {
-        cli.verbosity as usize + 2
-    };
+    setup_errlog(verbosity as usize, quiet)?;
 
-    stderrlog::new().verbosity(verbosity).init()?;
-
-    let mut file = file::open_or_create_format_file::<BibTex>(cli.file)?;
-
+    let mut file = file::open_or_create_format_file::<BibTex>(file)?;
     let mut biblio = file.read_ast()?;
 
-    let mut entry = match &cli.command {
-        Commands::Doi { doi } => {
-            dbg!("doi subcommand called with value of '{}'", doi);
-            trace!("Checking current bibliography for possible duplicate doi..");
-            app::check_entry_field_duplication(&biblio, "doi", doi)?;
-            trace!("No duplicate found!");
-            app::select_entry_by_doi(doi)?
-        }
-        Commands::Isbn { isbn } => {
-            dbg!("isbn subcommand called with value of '{}'", isbn);
-            trace!("Checking current bibliography for possible duplicate isbn..");
-            app::check_entry_field_duplication(&biblio, "isbn", isbn)?;
-            trace!("No duplicate found!");
-            app::select_entry_by_isbn(isbn)?
-        }
+    let mut entries = command.execute(&biblio)?;
+
+    if entries.is_empty() {
+        return Err(eyre!("No entries found!").into());
+    }
+
+    let mut entry = if confirm {
+        info!("Confirm flag set - picking the first entry found..");
+        entries.remove(0)
+    } else {
+        app::user_select(entries)?
     };
 
-    if let Some(cite) = cli.cite {
+    dbg!("Entry found: {:?}", entry.clone());
+
+    if let Some(cite) = cite {
         info!("Overriding cite key value with '{}'", cite);
         entry.cite = cite;
     }
@@ -68,8 +69,20 @@ fn try_main() -> Result<(), Box<dyn error::Error>> {
     trace!("Adding selected entry into bibliography");
     file.write_ast(biblio)?;
     trace!("Done!");
-    println!("Entry added to bibliography with cite key:");
-    println!("{}", cite_key);
+    println!("Entry added to bibliography with cite key:\n{}", cite_key);
+    Ok(())
+}
+
+fn setup_errlog(verbosity: usize, quiet: bool) -> Result<(), Box<dyn error::Error>> {
+    // if quiet then ignore verbosity but still show errors
+    let verbosity = if quiet {
+        dbg!("quiet flag used but dbg! and error will still be shown");
+        1
+    } else {
+        verbosity + 2
+    };
+
+    stderrlog::new().verbosity(verbosity).init()?;
     Ok(())
 }
 
@@ -101,6 +114,14 @@ struct Cli {
     /// Prevents the program from writing to stdout, errors will still be printed to stderr.
     #[clap(short, long)]
     quiet: bool,
+
+    /// Auto selects the first bibliographic entry found on search.
+    ///
+    /// This will select the very first option in this list of found entries on a search,
+    /// for searches by doi, isbn and other unique identifiers this should lead to predicatable
+    /// results (depends on the API).
+    #[clap(long)]
+    confirm: bool,
 }
 
 #[derive(Subcommand)]
@@ -118,4 +139,25 @@ enum Commands {
         /// The ISBN to search for
         isbn: String,
     },
+}
+
+impl Commands {
+    fn execute(self, biblio: &seb::Biblio) -> eyre::Result<Vec<Entry>> {
+        match &self {
+            Commands::Doi { doi } => {
+                dbg!("doi subcommand called with value of '{}'", doi);
+                trace!("Checking current bibliography for possible duplicate doi..");
+                app::check_entry_field_duplication(biblio, "doi", doi)?;
+                trace!("No duplicate found!");
+                seb::entries_by_doi(doi)
+            }
+            Commands::Isbn { isbn } => {
+                dbg!("isbn subcommand called with value of '{}'", isbn);
+                trace!("Checking current bibliography for possible duplicate isbn..");
+                app::check_entry_field_duplication(biblio, "isbn", isbn)?;
+                trace!("No duplicate found!");
+                seb::entries_by_isbn(isbn)
+            }
+        }
+    }
 }
