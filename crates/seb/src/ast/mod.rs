@@ -1,3 +1,8 @@
+//! Structs for representing a generic bibliographic entry and all its parts.
+mod quoted_string;
+
+pub use quoted_string::{EscapePattern, QuotedString};
+
 /// An intermediate representation of a bibliography which is not tied to a specific end format.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Biblio(Vec<Entry>);
@@ -87,7 +92,7 @@ pub struct Entry {
     pub cite: String,
 
     /// The title or equivalent of the entry
-    pub title: String,
+    pub title: QuotedString,
 
     /// The type of entry.
     ///
@@ -97,6 +102,14 @@ pub struct Entry {
 
     /// List of [`Field`]s, which are essentially key-value pairs.
     pub fields: Vec<Field>,
+}
+
+impl Entry {
+    /// The `&str` representation of the `title` field.
+    #[must_use]
+    pub fn title(&self) -> &str {
+        &self.title
+    }
 }
 
 /// The type of a bibliography entry.
@@ -127,7 +140,15 @@ pub struct Field {
     /// Name of the entry field.
     pub name: String,
     /// Value of the entry field.
-    pub value: String,
+    pub value: QuotedString,
+}
+
+impl Field {
+    /// The `&str` representation of the `value` field.
+    #[must_use]
+    pub fn value(&self) -> &str {
+        &self.value
+    }
 }
 
 #[cfg(test)]
@@ -137,17 +158,22 @@ mod tests {
 
     #[test]
     fn false_on_duplicate_field() {
+        let square_quote = |c: char| matches!(c, '{' | '}');
+        let title = QuotedString::from_quoted(
+            "{Quicksort}: A Fast Sorting Scheme in Theory and Practice",
+            &square_quote,
+        );
         let references = Biblio::new(vec![Entry {
             cite: "Edelkamp_2019".to_owned(),
-            title: "QuickXsort: A Fast Sorting Scheme in Theory and Practice".to_owned(),
+            title,
             variant: EntryType::Book,
             fields: vec![Field {
                 name: "doi".to_owned(),
-                value: "test".to_owned(),
+                value: QuotedString::new("test".to_owned()),
             }],
         }]);
 
-        assert!(references.contains_field("doi", |f| f.value == "test"));
-        assert!(!references.contains_field("doi", |f| f.value == "something else"));
+        assert!(references.contains_field("doi", |f| f.value() == "test"));
+        assert!(!references.contains_field("doi", |f| f.value() == "something else"));
     }
 }

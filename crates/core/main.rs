@@ -17,8 +17,8 @@ use clap::{AppSettings, Parser, Subcommand};
 use eyre::eyre;
 use log::{info, trace};
 use seb::{
+    ast::{Biblio, Entry},
     format::{BibTex, Reader, Writer},
-    Entry,
 };
 
 fn main() {
@@ -142,7 +142,7 @@ enum Commands {
 }
 
 impl Commands {
-    fn execute(self, biblio: &seb::Biblio) -> eyre::Result<Vec<Entry>> {
+    fn execute(self, biblio: &Biblio) -> eyre::Result<Vec<Entry>> {
         match &self {
             Commands::Doi { doi } => {
                 dbg!("doi subcommand called with value of '{}'", doi);
