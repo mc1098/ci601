@@ -1,8 +1,8 @@
-use crate::ast::{self, Biblio};
+use crate::ast::{self, Biblio, QuotedString};
 
 use super::Format;
 
-use biblatex::{Bibliography, ChunksExt};
+use biblatex::Bibliography;
 use eyre::{eyre, Result};
 
 /// A type wrapper around [`String`] to represent a `BibTex` format string.
@@ -17,6 +17,7 @@ impl Format for BibTex {
     fn parse(self) -> Result<Biblio> {
         let biblio =
             Bibliography::parse(&self.0).ok_or_else(|| eyre!("Cannot parse the BibTex"))?;
+        dbg!("biblatex::Bibliography = {:?}", &biblio);
         let entries = biblio.into_iter().map(ast::Entry::from).collect();
         Ok(ast::Biblio::new(entries))
     }
@@ -29,7 +30,7 @@ impl Format for BibTex {
                     "@{}{{{},\n    title = {{{}}},\n{}}}\n",
                     compose_type(&entry.variant),
                     entry.cite,
-                    entry.title,
+                    entry.title.map_quoted(bibtex_esc),
                     compose_fields(&entry.fields)
                 )
             })
@@ -65,10 +66,21 @@ const fn compose_type(entry_type: &ast::EntryType) -> &'static str {
     }
 }
 
+fn bibtex_esc(s: &str) -> String {
+    format!("{{{}}}", s)
+}
+
 fn compose_fields(fields: &[ast::Field]) -> String {
+    dbg!("fields = {:?}", &fields);
     fields
         .iter()
-        .map(|field| format!("    {} = {{{}}},\n", field.name, field.value))
+        .map(|field| {
+            format!(
+                "    {} = {{{}}},\n",
+                field.name,
+                field.value.map_quoted(bibtex_esc)
+            )
+        })
         .collect()
 }
 
@@ -101,7 +113,7 @@ impl From<biblatex::Entry> for ast::Entry {
             .drain()
             .map(|(k, v)| ast::Field {
                 name: k,
-                value: v.format_verbatim(),
+                value: v.into(),
             })
             .collect();
 
@@ -122,6 +134,20 @@ impl From<biblatex::Entry> for ast::Entry {
     }
 }
 
+impl From<biblatex::Chunks> for QuotedString {
+    fn from(chunks: biblatex::Chunks) -> Self {
+        let parts = chunks
+            .into_iter()
+            .map(|c| match c {
+                biblatex::Chunk::Verbatim(s) => (true, s),
+                biblatex::Chunk::Normal(s) => (false, s),
+            })
+            .collect();
+
+        Self::from_parts(parts)
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -130,14 +156,14 @@ mod tests {
     fn fields() -> Vec<ast::Field> {
         vec![ast::Field {
             name: "author".to_owned(),
-            value: "Me".to_owned(),
+            value: QuotedString::new("Me".to_owned()),
         }]
     }
 
     fn entries() -> Vec<ast::Entry> {
         vec![ast::Entry {
             cite: "entry1".to_owned(),
-            title: "Test".to_owned(),
+            title: QuotedString::new("Test".to_owned()),
             variant: ast::EntryType::Book,
             fields: fields()[..1].to_vec(),
         }]
@@ -147,9 +173,12 @@ mod tests {
     fn parse_then_compose_bibtex() {
         let bibtex_str = include_str!("../../../../tests/data/bibtex1.bib");
         let bibtex = BibTex::new(bibtex_str.to_owned());
+        dbg!("{:?}", &bibtex);
         let mut parsed = bibtex.parse().expect("bibtex1.bib is a valid bibtex entry");
 
         let composed = BibTex::compose(parsed.clone());
+
+        dbg!("{:?}", &composed);
 
         // we don't want to compare bibtex_str with composed raw as they can be different
         let mut parsed_two = composed

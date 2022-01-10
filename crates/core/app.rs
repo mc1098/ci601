@@ -1,5 +1,5 @@
 use eyre::{eyre, Result};
-use seb::Entry;
+use seb::ast::{Biblio, Entry};
 
 pub fn user_select(mut entries: Vec<Entry>) -> Result<Entry> {
     let selection = dialoguer::Select::with_theme(&dialoguer::theme::ColorfulTheme::default())
@@ -17,15 +17,11 @@ pub fn user_select(mut entries: Vec<Entry>) -> Result<Entry> {
 }
 
 fn entries_titles(entries: &[Entry]) -> Vec<String> {
-    entries.iter().map(|e| e.title.clone()).collect()
+    entries.iter().map(|e| e.title().to_owned()).collect()
 }
 
-pub fn check_entry_field_duplication(
-    bib: &seb::Biblio,
-    name: &str,
-    value: &str,
-) -> eyre::Result<()> {
-    if bib.contains_field(name, |f| f.value == value) {
+pub fn check_entry_field_duplication(bib: &Biblio, name: &str, value: &str) -> eyre::Result<()> {
+    if bib.contains_field(name, |f| f.value() == value) {
         Err(eyre!(
             "An entry already exists with a {} field with the value of '{}'.",
             name,
@@ -38,21 +34,23 @@ pub fn check_entry_field_duplication(
 
 #[test]
 fn field_dup_macro() {
-    let mut bib = seb::Biblio::new(vec![]);
+    use seb::ast::QuotedString;
+
+    let mut bib = Biblio::new(vec![]);
     let name = "doi";
-    let doi = "test";
+    let doi = QuotedString::new("test".to_owned());
 
-    assert!(check_entry_field_duplication(&bib, name, doi).is_ok());
+    assert!(check_entry_field_duplication(&bib, name, &doi).is_ok());
 
-    bib.insert(seb::Entry {
+    bib.insert(Entry {
         cite: String::new(),
-        title: "test".to_owned(),
-        variant: seb::EntryType::Book,
-        fields: vec![seb::Field {
+        title: QuotedString::new("test".to_owned()),
+        variant: seb::ast::EntryType::Book,
+        fields: vec![seb::ast::Field {
             name: name.to_owned(),
-            value: doi.to_owned(),
+            value: doi.clone(),
         }],
     });
 
-    assert!(check_entry_field_duplication(&bib, name, doi).is_err());
+    assert!(check_entry_field_duplication(&bib, name, &doi).is_err());
 }

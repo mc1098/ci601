@@ -4,9 +4,9 @@
     clippy::perf,
     clippy::style,
     clippy::missing_safety_doc,
-    clippy::missing_const_for_fn,
-    missing_docs
+    clippy::missing_const_for_fn
 )]
+#![warn(missing_docs)]
 #![allow(clippy::module_name_repetitions)]
 
 //! # bibadd-core
@@ -16,11 +16,11 @@
 //! bibliography to [`format::Format`]s such as [`format::BibTex`].
 
 mod api;
-mod ast;
+pub mod ast;
 pub mod format;
 pub mod parse;
 
-pub use ast::{Biblio, Entry, EntryType, Field};
+use ast::{Biblio, Entry};
 
 use eyre::Result;
 use log::trace;

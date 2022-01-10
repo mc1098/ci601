@@ -92,13 +92,15 @@ impl TryFrom<Book> for crate::ast::Entry {
                     published_date: year,
                 },
         } = book;
-        //
+
         // create citation_key based on first author + year.
         let mut cite = authors
             .drain(..)
             .next()
             .ok_or_else(|| eyre!("Not authors found from resource response"))?;
         cite.push_str(&year);
+
+        let title = crate::ast::QuotedString::quote(title);
 
         let fields = [
             ("isbn", isbn),
@@ -109,7 +111,7 @@ impl TryFrom<Book> for crate::ast::Entry {
         .into_iter()
         .map(|(k, value)| crate::ast::Field {
             name: k.to_owned(),
-            value,
+            value: crate::ast::QuotedString::quote(value),
         })
         .collect();
 
