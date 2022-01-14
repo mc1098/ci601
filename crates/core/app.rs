@@ -17,11 +17,11 @@ pub fn user_select(mut entries: Vec<Entry>) -> Result<Entry> {
 }
 
 fn entries_titles(entries: &[Entry]) -> Vec<String> {
-    entries.iter().map(|e| e.title().to_owned()).collect()
+    entries.iter().map(|e| e.title().to_string()).collect()
 }
 
 pub fn check_entry_field_duplication(bib: &Biblio, name: &str, value: &str) -> eyre::Result<()> {
-    if bib.contains_field(name, |f| f.value() == value) {
+    if bib.contains_field(name, |f| &**f == value) {
         Err(eyre!(
             "An entry already exists with a {} field with the value of '{}'.",
             name,
@@ -34,7 +34,8 @@ pub fn check_entry_field_duplication(bib: &Biblio, name: &str, value: &str) -> e
 
 #[test]
 fn field_dup_macro() {
-    use seb::ast::QuotedString;
+    use seb::ast::{EntryData, Manual, QuotedString};
+    use std::collections::HashMap;
 
     let mut bib = Biblio::new(vec![]);
     let name = "doi";
@@ -42,14 +43,14 @@ fn field_dup_macro() {
 
     assert!(check_entry_field_duplication(&bib, name, &doi).is_ok());
 
-    bib.insert(Entry {
-        cite: String::new(),
+    let data = Manual {
         title: QuotedString::new("test".to_owned()),
-        variant: seb::ast::EntryType::Book,
-        fields: vec![seb::ast::Field {
-            name: name.to_owned(),
-            value: doi.clone(),
-        }],
+        optional: HashMap::from([(name.to_owned(), doi.clone())]),
+    };
+
+    bib.insert(Entry {
+        citation_key: String::new(),
+        entry_data: EntryData::Manual(data),
     });
 
     assert!(check_entry_field_duplication(&bib, name, &doi).is_err());
