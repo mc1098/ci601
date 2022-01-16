@@ -1,4 +1,7 @@
-use std::{borrow::Cow, collections::HashMap};
+use std::{
+    borrow::Cow,
+    collections::{HashMap, HashSet},
+};
 
 use super::{Field, QuotedString};
 
@@ -143,10 +146,10 @@ macro_rules! entry_impl {
                     /// Creates a new [`Builder`] for this type to ensure that the required fields
                     /// are set before the entry type can be built.
                     #[must_use]
-                    pub fn builder(cite: String) -> Builder {
+                    pub fn builder<S: Into<String>>(cite: S) -> Builder {
                         Builder {
-                            cite,
-                            req: [$(stringify!($req),)+].into_iter().collect(),
+                            cite: cite.into(),
+                            req: [$(Cow::Borrowed(stringify!($req)),)+].into_iter().collect(),
                             fields: HashMap::new(),
                             entry_build: build,
                         }
@@ -164,7 +167,7 @@ macro_rules! entry_impl {
                 }
 
                 #[test]
-                fn builder_only_returns_ok_when_all_required_fields() {
+                fn builder_only_returns_ok_when_all_required_fields_set() {
                     use std::collections::VecDeque;
 
                     let mut builder = $target::builder("key".to_owned());
@@ -368,7 +371,7 @@ entry_impl! {
 /// let builder = Manual::builder("cite_key".to_owned());
 ///
 /// // manual only requires the `title` field to be valid
-/// assert_eq!(&["title"][..], builder.required_fields());
+/// assert_eq!(&["title"][..], builder.required_fields().collect::<Vec<_>>());
 ///
 /// let mut builder = builder.build().expect_err("The required title field is not set");
 /// builder.set_field("title", QuotedString::new("My manual".to_owned()));
@@ -382,7 +385,7 @@ entry_impl! {
 #[derive(Debug)]
 pub struct Builder {
     cite: String,
-    req: Vec<&'static str>,
+    req: HashSet<Cow<'static, str>>,
     fields: HashMap<String, QuotedString>,
     entry_build: fn(Self) -> Entry,
 }
@@ -394,24 +397,50 @@ impl Builder {
     /// Returns `Err(Self)` when the required fields have not been set to make a valid [`Entry`],
     /// returning `Self` allows for the user to retry.
     pub fn build(self) -> Result<Entry, Self> {
-        if self.req.iter().all(|r| self.fields.contains_key(*r)) {
+        if self.req.is_empty() {
             Ok((self.entry_build)(self))
         } else {
             Err(self)
         }
     }
 
-    /// Returns the slice of required fields that need to be set in order for `build` to succeed.
-    #[must_use]
-    pub fn required_fields(&self) -> &[&str] {
-        &self.req
+    /// Returns an iterator of the required fields that need to be set in order to make this
+    /// builder succeed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::borrow::Cow;
+    /// use seb::ast::{Manual, QuotedString};
+    ///
+    /// let mut builder = Manual::builder("cite".to_owned());
+    /// assert_eq!(Some(&Cow::Borrowed("title")), builder.required_fields().next());
+    ///
+    /// // set the `title` field then check if the required_fields is returning an empty iter.
+    /// builder.title(QuotedString::new("My manual".to_owned()));
+    /// assert_eq!(None, builder.required_fields().next());
+    pub fn required_fields(&self) -> impl Iterator<Item = &Cow<'static, str>> {
+        self.req.iter()
     }
 
     /// Sets a field value by field name.
     ///
-    /// When the field is set multiple times the last value is used when building the `Entry` type.
+    /// When the field is set multiple times the last value is used when building the [`Entry`] type.
+    /// The `name` of the field is always transformed into the lowercase internally before setting
+    /// the field so users of this API don't need to do this.
+    #[inline]
     pub fn set_field(&mut self, name: &str, value: QuotedString) {
-        self.fields.insert(name.to_lowercase(), value);
+        // normalize fields to lowercase
+        self.set_normalized_field(name.to_lowercase(), value);
+    }
+
+    /// Set a normalized (lowercase name) field.
+    ///
+    /// Checks whether this field is a required field and will remove that name from the required
+    /// set.
+    fn set_normalized_field(&mut self, name: String, value: QuotedString) {
+        self.req.remove(name.as_str());
+        self.fields.insert(name, value);
     }
 }
 
@@ -423,8 +452,9 @@ macro_rules! impl_builder {
                 ///
                 /// This method is equivalent to using the [`Builder::set_field`] method with the
                 /// field name and value.
+                #[inline]
                 pub fn $field(&mut self, value: QuotedString) {
-                    self.fields.insert(stringify!($field).to_owned(), value);
+                    self.set_normalized_field(stringify!($field).to_owned(), value);
                 }
             )*
         }
