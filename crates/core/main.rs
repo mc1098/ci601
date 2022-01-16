@@ -23,7 +23,6 @@ use seb::{
 
 fn main() {
     if let Err(err) = try_main() {
-        dbg!("{:?}", &err);
         eprintln!("{}", err);
         process::exit(2);
     }
@@ -44,6 +43,8 @@ fn try_main() -> Result<(), Box<dyn error::Error>> {
     let mut file = file::open_or_create_format_file::<BibTex>(file)?;
     let mut biblio = file.read_ast()?;
 
+    dbg!("current bibliography:\n{:?}", &biblio);
+
     let mut entries = command.execute(&biblio)?;
 
     if entries.is_empty() {
@@ -56,8 +57,6 @@ fn try_main() -> Result<(), Box<dyn error::Error>> {
     } else {
         app::user_select(entries)?
     };
-
-    dbg!("Entry found: {:?}", &entry);
 
     if let Some(cite) = cite {
         info!("Overriding cite key value with '{}'", cite);
