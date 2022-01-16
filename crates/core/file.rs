@@ -177,7 +177,6 @@ mod tests {
     #[should_panic(
         expected = "Failed to open the 'file does not exist.bib' file for reading and appending"
     )]
-    #[should_panic(expected = "Not Found")]
     fn err_when_trying_to_open_bib_file_that_does_not_exist() {
         open_file_by_name::<BibTex>(&PathBuf::from("file does not exist")).unwrap();
     }

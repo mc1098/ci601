@@ -133,6 +133,12 @@ enum Commands {
         /// The doi to search for
         doi: String,
     },
+    /// Search for entry by IETF RFC number
+    #[clap(setting(AppSettings::ArgRequiredElseHelp))]
+    Ietf {
+        /// The RFC number to search for
+        rfc_number: usize,
+    },
     /// Search for reference by ISBN
     #[clap(setting(AppSettings::ArgRequiredElseHelp))]
     Isbn {
@@ -150,6 +156,13 @@ impl Commands {
                 app::check_entry_field_duplication(biblio, "doi", doi)?;
                 trace!("No duplicate found!");
                 seb::entries_by_doi(doi)
+            }
+            Commands::Ietf { rfc_number } => {
+                dbg!("ietf subcommand called with value of '{rfc_number}'");
+                trace!("Checking current bibliography for possible duplicate RFC number..");
+                app::check_entry_field_duplication(biblio, "number", &rfc_number.to_string())?;
+                trace!("No duplicate found!");
+                seb::entries_by_rfc(*rfc_number)
             }
             Commands::Isbn { isbn } => {
                 dbg!("isbn subcommand called with value of '{}'", isbn);

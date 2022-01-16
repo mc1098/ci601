@@ -1,9 +1,6 @@
-use eyre::{eyre, Context, Result};
+use eyre::Result;
 
-use crate::{
-    format::{BibTex, Format},
-    Biblio, Entry,
-};
+use crate::{api::format_api, format::BibTex, Entry};
 
 pub(crate) fn get_entries_by_doi(doi: &str) -> Result<Vec<Entry>> {
     let url = format!(
@@ -11,13 +8,5 @@ pub(crate) fn get_entries_by_doi(doi: &str) -> Result<Vec<Entry>> {
         doi
     );
 
-    let client = reqwest::blocking::Client::new();
-    let bibtex = client
-        .get(url)
-        .send()
-        .and_then(reqwest::blocking::Response::text)
-        .map(BibTex::new)
-        .wrap_err_with(|| eyre!("Cannot create valid reference for this doi"))?;
-
-    bibtex.parse().map(Biblio::into_entries)
+    format_api::get_entry_by_url::<BibTex>(&url)
 }
