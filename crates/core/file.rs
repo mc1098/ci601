@@ -1,6 +1,6 @@
 use std::{
     fs::{File, OpenOptions},
-    io::{Read, Write},
+    io::{Read, Seek, Write},
     marker::PhantomData,
     path::{Path, PathBuf},
 };
@@ -39,6 +39,7 @@ impl<F: Format> Writer for FormatFile<F> {
 
     fn write(&mut self, format: F) -> Result<()> {
         let s = format.raw();
+        self.file.rewind()?;
         self.file
             .write_all(s.as_bytes())
             .wrap_err_with(|| eyre!("Cannot write format to file"))
@@ -67,7 +68,7 @@ pub fn open_or_create_format_file<F: Format>(file_name: Option<PathBuf>) -> Resu
 }
 
 #[inline]
-fn open_file_for_read_and_append<F: Format>(path: &Path) -> Result<FormatFile<F>> {
+fn open_file_for_read_and_write<F: Format>(path: &Path) -> Result<FormatFile<F>> {
     OpenOptions::new()
         .read(true)
         .write(true)
@@ -102,7 +103,7 @@ where
     F: Format,
 {
     let path_buf = path.with_extension(F::ext());
-    open_file_for_read_and_append(path_buf.as_path())
+    open_file_for_read_and_write(path_buf.as_path())
 }
 
 fn create_file_by_name<F>(path: &Path) -> Result<FormatFile<F>>
@@ -151,7 +152,7 @@ where
         ));
     }
 
-    open_file_for_read_and_append(path_buf.as_path())
+    open_file_for_read_and_write(path_buf.as_path())
 }
 
 fn read_file_to_string(file: &mut File) -> Result<String> {
