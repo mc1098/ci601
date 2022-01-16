@@ -23,6 +23,7 @@ use seb::{
 
 fn main() {
     if let Err(err) = try_main() {
+        dbg!("{:?}", &err);
         eprintln!("{}", err);
         process::exit(2);
     }
@@ -56,13 +57,13 @@ fn try_main() -> Result<(), Box<dyn error::Error>> {
         app::user_select(entries)?
     };
 
-    dbg!("Entry found: {:?}", entry.clone());
+    dbg!("Entry found: {:?}", &entry);
 
     if let Some(cite) = cite {
         info!("Overriding cite key value with '{}'", cite);
-        entry.cite = cite;
+        entry.set_cite(cite);
     }
-    let cite_key = entry.cite.clone();
+    let cite_key = entry.cite().to_owned();
 
     biblio.insert(entry);
 

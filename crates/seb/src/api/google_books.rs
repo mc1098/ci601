@@ -2,9 +2,9 @@ use eyre::{eyre, Context, Result};
 use log::{info, trace};
 use serde::Deserialize;
 
-use crate::Entry;
+use crate::ast::{self, Entry};
 
-const GOOGLE_BOOKS_URL: &str = "https:://www.googleapis.com/books/v1/volumes?q=isbn:";
+const GOOGLE_BOOKS_URL: &str = "https://www.googleapis.com/books/v1/volumes?q=isbn:";
 
 pub(crate) fn get_entries_by_isbn(isbn: &str) -> Result<Vec<Entry>> {
     get_book_info(isbn)
@@ -77,7 +77,7 @@ impl Item {
     }
 }
 
-impl TryFrom<Book> for crate::ast::Entry {
+impl TryFrom<Book> for Entry {
     type Error = eyre::Report;
 
     fn try_from(book: Book) -> Result<Self> {
@@ -86,7 +86,7 @@ impl TryFrom<Book> for crate::ast::Entry {
             isbn,
             volume_info:
                 VolumeInfo {
-                    mut authors,
+                    authors,
                     title,
                     publisher,
                     published_date: year,
@@ -95,32 +95,26 @@ impl TryFrom<Book> for crate::ast::Entry {
 
         // create citation_key based on first author + year.
         let mut cite = authors
-            .drain(..)
-            .next()
+            .get(0)
+            .cloned()
             .ok_or_else(|| eyre!("Not authors found from resource response"))?;
         cite.push_str(&year);
 
-        let title = crate::ast::QuotedString::quote(title);
+        let title = ast::QuotedString::new(title);
 
-        let fields = [
-            ("isbn", isbn),
-            ("authors", authors.join(",")),
-            ("publisher", publisher),
-            ("year", year),
-        ]
-        .into_iter()
-        .map(|(k, value)| crate::ast::Field {
-            name: k.to_owned(),
-            value: crate::ast::QuotedString::quote(value),
-        })
-        .collect();
-
-        Ok(Self {
+        let data = ast::Book {
             cite,
+            author: ast::QuotedString::new(authors.join(",")),
             title,
-            variant: crate::ast::EntryType::Book,
-            fields,
-        })
+            publisher: ast::QuotedString::new(publisher),
+            year: ast::QuotedString::new(year),
+            optional: std::collections::HashMap::from([(
+                "isbn".to_owned(),
+                ast::QuotedString::new(isbn),
+            )]),
+        };
+
+        Ok(Self::Book(data))
     }
 }
 

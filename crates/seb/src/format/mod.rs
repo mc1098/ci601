@@ -57,10 +57,11 @@ pub trait Format {
 
 /// A trait for objects which are [`Format`]-oriented sinks.
 ///
-/// Writers are defined by implementing the [`write`] method which writes a format to this given
+/// Writers are defined by implementing the [`Writer::write`] method which writes a format to this given
 /// writer.
 ///
-/// Writers have a default implemention of [`write_ast`] for [`Biblio`] using the [`write`] method.
+/// Writers have a default implemention of [`Writer::write_ast`] for [`Biblio`] using the
+/// [`Writer::write`] method.
 pub trait Writer {
     /// The format associated with the writer.
     type Format: Format;
@@ -74,7 +75,7 @@ pub trait Writer {
     /// completed.
     fn write(&mut self, format: Self::Format) -> Result<()>;
 
-    /// Write a [`Biblio`] into this writer using [`Format::compose`] from the [`Self::Format`]
+    /// Write a [`Biblio`] into this writer using [`Format::compose`] from the [`Writer::Format`]
     /// associated type.
     ///
     /// # Errors
@@ -89,26 +90,26 @@ pub trait Writer {
 
 /// The [`Reader`] trait allows for reading a [`Format`] from a source.
 ///
-/// Readers are defined by implementing the [`read`] method which reads a format from this given
+/// Readers are defined by implementing the [`Reader::read`] method which reads a format from this given
 /// reader.
 ///
-/// Readers have a default implemention of [`read_ast`] for [`Biblio`] using the [`read`] method.
+/// Readers have a default implemention of [`Reader::read_ast`] for [`Biblio`] using the [`Reader::read`] method.
 pub trait Reader {
     /// The format associated with the reader.
     type Format: Format;
 
-    /// Pull some bytes from this writer in order to produce a [`Self::Format`] instance.
+    /// Pull some bytes from this writer in order to produce a [`Reader::Format`] instance.
     ///
     /// # Errors
     /// If this method encounters any form of error making it unable to read the bytes in order to
     /// create the format.
     fn read(&mut self) -> Result<Self::Format>;
 
-    /// Read bytes from this writer using [`Self::read`] and then parse using [`Format::parse`]
-    /// with the associated [`Self::Format`] type.
+    /// Read bytes from this writer using [`Reader::read`] and then parse using [`Format::parse`]
+    /// with the associated [`Reader::Format`] type.
     ///
     /// # Errors
-    /// This will return [`Err`] if there is an error from [`Self::read`] or an error when parsing
+    /// This will return [`Err`] if there is an error from [`Reader::read`] or an error when parsing
     /// using [`Format::parse`].
     fn read_ast(&mut self) -> Result<Biblio> {
         let format = self.read()?;

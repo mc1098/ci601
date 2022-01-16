@@ -27,11 +27,10 @@ impl Format for BibTex {
             .into_iter()
             .map(|entry| {
                 format!(
-                    "@{}{{{},\n    title = {{{}}},\n{}}}\n",
-                    compose_type(&entry.variant),
-                    entry.cite,
-                    entry.title.map_quoted(bibtex_esc),
-                    compose_fields(&entry.fields)
+                    "@{}{{{},\n{}}}\n",
+                    compose_variant(&entry),
+                    entry.cite(),
+                    compose_fields(&entry.fields())
                 )
             })
             .collect::<String>();
@@ -51,18 +50,21 @@ impl Format for BibTex {
     }
 }
 
-const fn compose_type(entry_type: &ast::EntryType) -> &'static str {
-    match entry_type {
-        ast::EntryType::Article => "article",
-        ast::EntryType::Book => "book",
-        ast::EntryType::Booklet => "booklet",
-        ast::EntryType::Conference => "conference",
-        ast::EntryType::InCollection => "incollection",
-        ast::EntryType::Manual => "manual",
-        ast::EntryType::MasterThesis => "masterthesis",
-        ast::EntryType::PhdThesis => "phdthesis",
-        ast::EntryType::Report => "techreport",
-        _ => "misc",
+const fn compose_variant(entry: &ast::Entry) -> &'static str {
+    match entry {
+        ast::Entry::Article(_) => "article",
+        ast::Entry::Book(_) => "book",
+        ast::Entry::Booklet(_) => "booklet",
+        ast::Entry::BookChapter(_) | ast::Entry::BookPages(_) => "inbook",
+        ast::Entry::BookSection(_) => "incollection",
+        ast::Entry::InProceedings(_) => "inproceedings",
+        ast::Entry::Manual(_) => "manual",
+        ast::Entry::MasterThesis(_) => "masterthesis",
+        ast::Entry::PhdThesis(_) => "phdthesis",
+        ast::Entry::Other(_) => "misc",
+        ast::Entry::Proceedings(_) => "proceedings",
+        ast::Entry::TechReport(_) => "techreport",
+        ast::Entry::Unpublished(_) => "unpublished",
     }
 }
 
@@ -93,44 +95,26 @@ impl From<biblatex::Entry> for ast::Entry {
             mut fields,
         } = entry;
 
-        let variant = match entry_type {
-            biblatex::EntryType::Article => ast::EntryType::Article,
-            biblatex::EntryType::Book => ast::EntryType::Book,
-            biblatex::EntryType::Booklet => ast::EntryType::Booklet,
-            biblatex::EntryType::InCollection => ast::EntryType::InCollection,
-            biblatex::EntryType::InProceedings => ast::EntryType::Conference,
-            biblatex::EntryType::Manual => ast::EntryType::Manual,
-            biblatex::EntryType::MastersThesis => ast::EntryType::MasterThesis,
-            biblatex::EntryType::PhdThesis => ast::EntryType::PhdThesis,
-            biblatex::EntryType::TechReport | biblatex::EntryType::Report => ast::EntryType::Report,
-            biblatex::EntryType::Thesis => ast::EntryType::Paper,
-            biblatex::EntryType::Online => ast::EntryType::Webpage,
-            biblatex::EntryType::Software => ast::EntryType::Software,
-            _ => ast::EntryType::Other(entry_type.to_string()),
+        let mut builder = match entry_type {
+            biblatex::EntryType::Article => ast::Article::builder(cite),
+            biblatex::EntryType::Book => ast::Book::builder(cite),
+            biblatex::EntryType::Booklet => ast::Booklet::builder(cite),
+            biblatex::EntryType::InCollection => ast::BookSection::builder(cite),
+            biblatex::EntryType::InProceedings => ast::InProceedings::builder(cite),
+            biblatex::EntryType::Manual => ast::Manual::builder(cite),
+            biblatex::EntryType::MastersThesis => ast::MasterThesis::builder(cite),
+            biblatex::EntryType::PhdThesis => ast::PhdThesis::builder(cite),
+            biblatex::EntryType::TechReport | biblatex::EntryType::Report => {
+                ast::TechReport::builder(cite)
+            }
+            _ => ast::Other::builder(cite),
         };
 
-        let mut fields: Vec<ast::Field> = fields
-            .drain()
-            .map(|(k, v)| ast::Field {
-                name: k,
-                value: v.into(),
-            })
-            .collect();
-
-        let index = fields
-            .iter()
-            .enumerate()
-            .find(|(_, f)| f.name == "title" || f.name == "booktitle")
-            .map(|(i, _)| i);
-
-        let title = index.map(|i| fields.remove(i).value).unwrap_or_default();
-
-        Self {
-            cite,
-            title,
-            variant,
-            fields,
+        for (name, value) in fields.drain() {
+            builder.set_field(&name, value.into());
         }
+
+        builder.build().expect("Invalid entry data")
     }
 }
 
@@ -151,22 +135,23 @@ impl From<biblatex::Chunks> for QuotedString {
 #[cfg(test)]
 mod tests {
 
+    use std::{borrow::Cow, collections::HashMap};
+
     use super::*;
 
-    fn fields() -> Vec<ast::Field> {
+    fn fields() -> Vec<ast::Field<'static, 'static>> {
         vec![ast::Field {
-            name: "author".to_owned(),
-            value: QuotedString::new("Me".to_owned()),
+            name: Cow::Borrowed("author"),
+            value: Cow::Owned(QuotedString::new("Me".to_owned())),
         }]
     }
 
     fn entries() -> Vec<ast::Entry> {
-        vec![ast::Entry {
+        vec![ast::Entry::Manual(ast::Manual {
             cite: "entry1".to_owned(),
             title: QuotedString::new("Test".to_owned()),
-            variant: ast::EntryType::Book,
-            fields: fields()[..1].to_vec(),
-        }]
+            optional: HashMap::from([("author".to_owned(), QuotedString::new("Me".to_owned()))]),
+        })]
     }
 
     #[test]
@@ -174,21 +159,17 @@ mod tests {
         let bibtex_str = include_str!("../../../../tests/data/bibtex1.bib");
         let bibtex = BibTex::new(bibtex_str.to_owned());
         dbg!("{:?}", &bibtex);
-        let mut parsed = bibtex.parse().expect("bibtex1.bib is a valid bibtex entry");
+        let parsed = bibtex.parse().expect("bibtex1.bib is a valid bibtex entry");
 
         let composed = BibTex::compose(parsed.clone());
 
         dbg!("{:?}", &composed);
 
         // we don't want to compare bibtex_str with composed raw as they can be different
-        let mut parsed_two = composed
+        let parsed_two = composed
             .parse()
             .expect("second parse of composed bibtex1 should be valid");
 
-        // compare the two ASTs as they MUST be the same
-        // sort the entries using the test function
-        parsed.sort_entries();
-        parsed_two.sort_entries();
         assert_eq!(parsed, parsed_two);
     }
 
@@ -206,7 +187,7 @@ mod tests {
         let result = BibTex::compose(references);
 
         // indents and newlines are important in this string so don't format!
-        let expected = "@book{entry1,
+        let expected = "@manual{entry1,
     title = {Test},
     author = {Me},
 }\n";

@@ -39,6 +39,12 @@ impl Deref for QuotedString {
     }
 }
 
+impl AsRef<str> for QuotedString {
+    fn as_ref(&self) -> &str {
+        &self.value
+    }
+}
+
 impl QuotedString {
     /// Convenient alias for `false` for use in [`Self::from_quoted`].
     pub const NORMAL: bool = false;
