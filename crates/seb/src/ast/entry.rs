@@ -2,37 +2,6 @@ use std::{borrow::Cow, collections::HashMap};
 
 use super::{Field, QuotedString};
 
-/// An intermediate representation of a bibliography entry which is not tied to a specific end
-/// format.
-#[derive(Debug, PartialEq)]
-#[cfg_attr(test, derive(Clone))]
-pub struct Entry {
-    pub citation_key: String,
-    pub entry_data: EntryData,
-}
-
-impl Entry {
-    #[must_use]
-    pub const fn title(&self) -> &QuotedString {
-        self.entry_data.title()
-    }
-
-    #[must_use]
-    pub fn fields(&self) -> Vec<Field> {
-        self.entry_data.fields()
-    }
-
-    #[must_use]
-    pub fn contains_field(&self, name: &str) -> bool {
-        self.find_field(name).is_some()
-    }
-
-    #[must_use]
-    pub fn find_field(&self, name: &str) -> Option<&QuotedString> {
-        self.entry_data.find_field(name)
-    }
-}
-
 const fn tuple_to_field<'name, 'value>(
     (name, value): (&'name str, &'value QuotedString),
 ) -> Field<'name, 'value> {
@@ -42,15 +11,47 @@ const fn tuple_to_field<'name, 'value>(
     }
 }
 
-macro_rules! impl_builder {
-    ($($mod:ident: $target:ident($($req:ident),+)),* $(,)?)=> {
+macro_rules! entry_impl {
+    ($(
+        $mod:ident:
+            $(#[$target_comment:meta])*
+            $target:ident($(
+                $(#[$req_comment:meta])*
+                $req:ident
+            ),+)
+    ),* $(,)?) => {
+        /// An intermediate representation of a bibliography entry which is not tied to a specific end
+        /// format.
         #[derive(Debug, PartialEq)]
         #[cfg_attr(test, derive(Clone))]
-        pub enum EntryData {
-            $($target($target),)*
+        pub enum Entry {
+            $(
+                $(#[$target_comment])*
+                $target($target),
+            )*
         }
 
-        impl EntryData {
+        impl Entry {
+
+            /// Returns the citation key of this entry.
+            #[must_use]
+            pub fn cite(&self) -> &str {
+                match self {
+                    $(Self::$target(data) => &data.cite,)*
+                }
+            }
+
+            /// Sets the citation key of this entry to a new value.
+            pub fn set_cite(&mut self, cite: String) {
+                match self {
+                    $(Self::$target(data) => { data.cite = cite; },)*
+                }
+            }
+
+            /// Returns the `title` field value of this entry.
+            ///
+            /// Each [`Entry`] type is required to have a `title` field so this should always
+            /// represent a valid value.
             #[must_use]
             pub const fn title(&self) -> &QuotedString {
                 match self {
@@ -58,6 +59,10 @@ macro_rules! impl_builder {
                 }
             }
 
+            /// Returns the [`Field`]s of the entry.
+            ///
+            /// The fields returned include the required and optional fields in no particular
+            /// order.
             #[must_use]
             pub fn fields(&self) -> Vec<Field> {
                 match self {
@@ -65,6 +70,11 @@ macro_rules! impl_builder {
                 }
             }
 
+            /// Searches for a field value that matches the `name` given.
+            ///
+            /// [`Self::find_field`] returns `Some(&QuotedString)` when a matching field is found
+            /// and the return is the value of that matching field, returns `None` when no field
+            /// matches the `name`.
             #[must_use]
             pub fn find_field(&self, name: &str) -> Option<&QuotedString> {
                 match self {
@@ -77,19 +87,35 @@ macro_rules! impl_builder {
             mod $mod {
                 use super::*;
 
+                $(#[$target_comment])*
                 #[derive(Debug, PartialEq)]
                 #[cfg_attr(test, derive(Clone))]
                 pub struct $target {
-                    $(pub $req: QuotedString,)+
+                    /// Citation key of the entry
+                    pub cite: String,
+                    $(
+                        $(#[$req_comment])*
+                        pub $req: QuotedString,
+                    )+
+                    /// Optional fields that a not essential for creating a valid entry of this
+                    /// type.
                     pub optional: HashMap<String, QuotedString>,
                 }
 
                 impl $target {
+                    /// Returns the `title` field value of this entry.
+                    ///
+                    /// This type is required to have a `title` field so this should always
+                    /// represent a valid value.
                     #[must_use]
                     pub const fn title(&self) -> &QuotedString {
                         &self.title
                     }
 
+                    /// Returns the [`Field`]s of the entry.
+                    ///
+                    /// The fields returned include the required and optional fields in no particular
+                    /// order.
                     #[must_use]
                     pub fn fields(&self) -> Vec<Field> {
                         let mut fields: Vec<Field> = [$((stringify!($req), &self.$req),)+]
@@ -100,6 +126,11 @@ macro_rules! impl_builder {
                         fields
                     }
 
+                    /// Searches for a field value that matches the `name` given.
+                    ///
+                    /// [`Self::find_field`] returns `Some(&QuotedString)` when a matching field is found
+                    /// and the return is the value of that matching field, returns `None` when no field
+                    /// matches the `name`.
                     #[must_use]
                     pub fn find_field(&self, name: &str) -> Option<&QuotedString> {
                         let normal_name = name.to_lowercase();
@@ -109,9 +140,12 @@ macro_rules! impl_builder {
                         }
                     }
 
+                    /// Creates a new [`Builder`] for this type to ensure that the required fields
+                    /// are set before the entry type can be built.
                     #[must_use]
-                    pub fn builder() -> Builder {
+                    pub fn builder(cite: String) -> Builder {
                         Builder {
+                            cite,
                             req: [$(stringify!($req),)+].into_iter().collect(),
                             fields: HashMap::new(),
                             entry_build: build,
@@ -119,20 +153,21 @@ macro_rules! impl_builder {
                     }
                 }
 
-                fn build(mut builder: Builder) -> EntryData {
+                fn build(mut builder: Builder) -> Entry {
                     let data = $target {
+                        cite: builder.cite,
                         $($req: builder.fields.remove(stringify!($req)).unwrap(),)+
                         optional: builder.fields,
                     };
 
-                    EntryData::$target(data)
+                    Entry::$target(data)
                 }
 
                 #[test]
                 fn builder_only_returns_ok_when_all_required_fields() {
                     use std::collections::VecDeque;
 
-                    let mut builder = $target::builder();
+                    let mut builder = $target::builder("key".to_owned());
                     let mut required: VecDeque<_> = [$(stringify!($req),)+].into_iter().collect();
 
                     let iter = std::iter::from_fn(move || required.pop_front());
@@ -147,11 +182,11 @@ macro_rules! impl_builder {
                     }
                     builder.set_field("test", QuotedString::new("value".to_owned()));
                     let res = builder.build();
-                    let entry_data = res.expect("All required fields added so should have built correctly");
+                    let entry = res.expect("All required fields added so should have built correctly");
 
                     let mut alpha = ('a'..).into_iter().map(|c| c.to_string());
 
-                    if let EntryData::$target(data) = entry_data {
+                    if let Entry::$target(data) = entry {
                         $(
                             assert_eq!(alpha.next().unwrap(), &*data.$req);
                         )+
@@ -166,29 +201,190 @@ macro_rules! impl_builder {
     }
 }
 
-impl_builder! {
-    article: Article(author, title, journal, year),
-    book: Book(author, title, publisher, year),
-    booklet: Booklet(title),
+entry_impl! {
+    article:
+        /// The article entry type represents an article
+        Article(
+            /// Authors of the article.
+            author,
+            /// Title of the article.
+            title,
+            /// The journal that contains this article.
+            journal,
+            /// The year of this article.
+            year
+        ),
+    book:
+        /// The book entry type
+        Book(
+            /// Authors of the book.
+            author,
+            /// Title of the book.
+            title,
+            /// The publisher of the book.
+            publisher,
+            /// The year the book was published.
+            year
+        ),
+    booklet:
+        /// The booklet entry type
+        Booklet(
+            /// Title of the booklet.
+            title
+        ),
     //inbook
-    book_chapter: BookChapter(author, title, chapter, publisher, year),
-    book_pages: BookPages(author, title, pages, publisher, year),
-    book_section: BookSection(author, title, book_title, publisher, year),
-    in_proceedings: InProceedings(author, title, book_title, year),
-    manual: Manual(title),
-    master_thesis: MasterThesis(author, title, school, year),
-    phd_thesis: PhdThesis(author, title, school, year),
-    other: Other(title),
-    proceedings: Proceedings(title, year),
-    tech_report: TechReport(author, title, institution, year),
-    unpublished: Unpublished(author, title),
+    book_chapter:
+        /// A chapter of a book
+        BookChapter(
+            /// Authors of the book.
+            author,
+            /// Title of the book.
+            title,
+            /// Name of the chapter.
+            chapter,
+            /// Publisher of the book.
+            publisher,
+            /// Year the book was published.
+            year
+        ),
+    book_pages:
+        /// A page range of a book
+        BookPages(
+            /// Authors of the book.
+            author,
+            /// Title of the book.
+            title,
+            /// Page range of the book.
+            ///
+            /// The range should be in the format of "10-20".
+            pages,
+            /// Publisher of the book.
+            publisher,
+            /// Year the book was published.
+            year
+        ),
+    book_section:
+        /// A section of a book with a title.
+        BookSection(
+            /// Authors of the book.
+            author,
+            /// Title of the section.
+            title,
+            /// Title of the book.
+            book_title,
+            /// Publisher of the book.
+            publisher,
+            /// Year the book was published.
+            year
+        ),
+    in_proceedings:
+        /// Published paper in a conference proceedings.
+        InProceedings(
+            /// Authors of the book.
+            author,
+            /// Title of the conference.
+            title,
+            /// Title of the paper.
+            book_title,
+            /// Year the paper was published.
+            year
+        ),
+    manual:
+        /// Manual for technical information for machine software.
+        Manual(
+            /// Title of the manual.
+            title
+        ),
+    master_thesis:
+        /// A thesis for a Master's level degree.
+        MasterThesis(
+            /// Authors of the thesis.
+            author,
+            /// Title of the thesis.
+            title,
+            /// School of the author.
+            school,
+            /// Year the paper was published.
+            year
+        ),
+    phd_thesis:
+        /// A thesis for a PhD level degree.
+        PhdThesis(
+            /// Authors of the thesis.
+            author,
+            /// Title of the thesis.
+            title,
+            /// School of the author.
+            school,
+            /// Year the paper was published.
+            year
+        ),
+    other:
+        /// Any other resource not supported by other entry variants.
+        Other(
+            /// Title of the resource.
+            title
+        ),
+    proceedings:
+        /// A conference proceeding.
+        Proceedings(
+            /// Title of the conference.
+            title,
+            /// Year of the conference.
+            year
+        ),
+    tech_report:
+        /// A technical report.
+        TechReport(
+            /// Authors of the report.
+            author,
+            /// Title of the report.
+            title,
+            /// Institution that published the report.
+            institution,
+            /// Year of the report.
+            year
+        ),
+    unpublished:
+        /// A document that has not been officially published.
+        Unpublished(
+            /// Authors of the document.
+            author,
+            /// Title of the document.
+            title
+        ),
 }
 
+/// A general `Entry` builder that allows for retrying builds of entries multiple times at runtime.
+///
+/// Each entry type, like `Book`, has an associated `builder` function in order to create the
+/// correct builder for that type.
+///
+/// # Examples
+///
+/// ```
+/// use seb::ast::{Builder, Manual, QuotedString};
+///
+/// let builder = Manual::builder("cite_key".to_owned());
+///
+/// // manual only requires the `title` field to be valid
+/// assert_eq!(&["title"][..], builder.required_fields());
+///
+/// let mut builder = builder.build().expect_err("The required title field is not set");
+/// builder.set_field("title", QuotedString::new("My manual".to_owned()));
+///
+/// let entry = builder.build().expect("All required fields have now been set so this is valid");
+///
+/// assert_eq!("cite_key", entry.cite());
+/// assert_eq!("My manual", &**entry.title());
+/// ```
+///
 #[derive(Debug)]
 pub struct Builder {
+    cite: String,
     req: Vec<&'static str>,
     fields: HashMap<String, QuotedString>,
-    entry_build: fn(Self) -> EntryData,
+    entry_build: fn(Self) -> Entry,
 }
 
 impl Builder {
@@ -197,7 +393,7 @@ impl Builder {
     /// # Errors
     /// Returns `Err(Self)` when the required fields have not been set to make a valid [`Entry`],
     /// returning `Self` allows for the user to retry.
-    pub fn build(self) -> Result<EntryData, Self> {
+    pub fn build(self) -> Result<Entry, Self> {
         if self.req.iter().all(|r| self.fields.contains_key(*r)) {
             Ok((self.entry_build)(self))
         } else {
@@ -205,12 +401,45 @@ impl Builder {
         }
     }
 
+    /// Returns the slice of required fields that need to be set in order for `build` to succeed.
     #[must_use]
     pub fn required_fields(&self) -> &[&str] {
         &self.req
     }
 
+    /// Sets a field value by field name.
+    ///
+    /// When the field is set multiple times the last value is used when building the `Entry` type.
     pub fn set_field(&mut self, name: &str, value: QuotedString) {
         self.fields.insert(name.to_lowercase(), value);
     }
 }
+
+macro_rules! impl_builder {
+    ($($field:ident),*$(,)?) => {
+        impl Builder {
+            $(
+                /// Sets the field value with the name of this method.
+                ///
+                /// This method is equivalent to using the [`Builder::set_field`] method with the
+                /// field name and value.
+                pub fn $field(&mut self, value: QuotedString) {
+                    self.fields.insert(stringify!($field).to_owned(), value);
+                }
+            )*
+        }
+    };
+}
+
+impl_builder!(
+    author,
+    book_title,
+    chapter,
+    institution,
+    journal,
+    pages,
+    publisher,
+    school,
+    title,
+    year,
+);

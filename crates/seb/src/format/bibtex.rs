@@ -28,8 +28,8 @@ impl Format for BibTex {
             .map(|entry| {
                 format!(
                     "@{}{{{},\n{}}}\n",
-                    compose_type(&entry.entry_data),
-                    entry.citation_key,
+                    compose_variant(&entry),
+                    entry.cite(),
                     compose_fields(&entry.fields())
                 )
             })
@@ -50,21 +50,21 @@ impl Format for BibTex {
     }
 }
 
-const fn compose_type(entry_data: &ast::EntryData) -> &'static str {
-    match entry_data {
-        ast::EntryData::Article(_) => "article",
-        ast::EntryData::Book(_) => "book",
-        ast::EntryData::Booklet(_) => "booklet",
-        ast::EntryData::BookChapter(_) | ast::EntryData::BookPages(_) => "inbook",
-        ast::EntryData::BookSection(_) => "incollection",
-        ast::EntryData::InProceedings(_) => "inproceedings",
-        ast::EntryData::Manual(_) => "manual",
-        ast::EntryData::MasterThesis(_) => "masterthesis",
-        ast::EntryData::PhdThesis(_) => "phdthesis",
-        ast::EntryData::Other(_) => "misc",
-        ast::EntryData::Proceedings(_) => "proceedings",
-        ast::EntryData::TechReport(_) => "techreport",
-        ast::EntryData::Unpublished(_) => "unpublished",
+const fn compose_variant(entry: &ast::Entry) -> &'static str {
+    match entry {
+        ast::Entry::Article(_) => "article",
+        ast::Entry::Book(_) => "book",
+        ast::Entry::Booklet(_) => "booklet",
+        ast::Entry::BookChapter(_) | ast::Entry::BookPages(_) => "inbook",
+        ast::Entry::BookSection(_) => "incollection",
+        ast::Entry::InProceedings(_) => "inproceedings",
+        ast::Entry::Manual(_) => "manual",
+        ast::Entry::MasterThesis(_) => "masterthesis",
+        ast::Entry::PhdThesis(_) => "phdthesis",
+        ast::Entry::Other(_) => "misc",
+        ast::Entry::Proceedings(_) => "proceedings",
+        ast::Entry::TechReport(_) => "techreport",
+        ast::Entry::Unpublished(_) => "unpublished",
     }
 }
 
@@ -96,30 +96,25 @@ impl From<biblatex::Entry> for ast::Entry {
         } = entry;
 
         let mut builder = match entry_type {
-            biblatex::EntryType::Article => ast::Article::builder(),
-            biblatex::EntryType::Book => ast::Book::builder(),
-            biblatex::EntryType::Booklet => ast::Booklet::builder(),
-            biblatex::EntryType::InCollection => ast::BookSection::builder(),
-            biblatex::EntryType::InProceedings => ast::InProceedings::builder(),
-            biblatex::EntryType::Manual => ast::Manual::builder(),
-            biblatex::EntryType::MastersThesis => ast::MasterThesis::builder(),
-            biblatex::EntryType::PhdThesis => ast::PhdThesis::builder(),
+            biblatex::EntryType::Article => ast::Article::builder(cite),
+            biblatex::EntryType::Book => ast::Book::builder(cite),
+            biblatex::EntryType::Booklet => ast::Booklet::builder(cite),
+            biblatex::EntryType::InCollection => ast::BookSection::builder(cite),
+            biblatex::EntryType::InProceedings => ast::InProceedings::builder(cite),
+            biblatex::EntryType::Manual => ast::Manual::builder(cite),
+            biblatex::EntryType::MastersThesis => ast::MasterThesis::builder(cite),
+            biblatex::EntryType::PhdThesis => ast::PhdThesis::builder(cite),
             biblatex::EntryType::TechReport | biblatex::EntryType::Report => {
-                ast::TechReport::builder()
+                ast::TechReport::builder(cite)
             }
-            _ => ast::Other::builder(),
+            _ => ast::Other::builder(cite),
         };
 
         for (name, value) in fields.drain() {
             builder.set_field(&name, value.into());
         }
 
-        let entry_data = builder.build().expect("Invalid entry data");
-
-        Self {
-            citation_key: cite,
-            entry_data,
-        }
+        builder.build().expect("Invalid entry data")
     }
 }
 
@@ -152,16 +147,11 @@ mod tests {
     }
 
     fn entries() -> Vec<ast::Entry> {
-        vec![ast::Entry {
-            citation_key: "entry1".to_owned(),
-            entry_data: ast::EntryData::Manual(ast::Manual {
-                title: QuotedString::new("Test".to_owned()),
-                optional: HashMap::from([(
-                    "author".to_owned(),
-                    QuotedString::new("Me".to_owned()),
-                )]),
-            }),
-        }]
+        vec![ast::Entry::Manual(ast::Manual {
+            cite: "entry1".to_owned(),
+            title: QuotedString::new("Test".to_owned()),
+            optional: HashMap::from([("author".to_owned(), QuotedString::new("Me".to_owned()))]),
+        })]
     }
 
     #[test]

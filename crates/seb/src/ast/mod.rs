@@ -39,7 +39,7 @@ impl Biblio {
 
     /// Tests if any field in this [`Biblio`] matches a predicate.
     ///
-    /// [`Self::contains_field`] takes a `key` value that should match a [`Field::Name`] and
+    /// [`Self::contains_field`] takes a `key` value that should match a [`Field::name`] and
     /// [`Self::contains_field`] takes a closure that returns `true` or `false`. It applies this
     /// closure to each field in each entry of the [`Biblio`], and if any of them return `true`, then
     /// so does [`Self::contains_field`]. If they all return `false`, it returns `false`.
@@ -103,10 +103,11 @@ mod tests {
         let value = QuotedString::new("test".to_owned());
         let mut optional = HashMap::new();
         optional.insert("doi".to_owned(), value);
-        let entry = Entry {
-            citation_key: "Edelkamp_2019".to_owned(),
-            entry_data: EntryData::Manual(Manual { title, optional }),
-        };
+        let entry = Entry::Manual(Manual {
+            cite: "Edelkamp_2019".to_owned(),
+            title,
+            optional,
+        });
         let references = Biblio::new(vec![entry]);
 
         assert!(references.contains_field("doi", |f| &**f == "test"));

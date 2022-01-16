@@ -61,9 +61,9 @@ fn try_main() -> Result<(), Box<dyn error::Error>> {
 
     if let Some(cite) = cite {
         info!("Overriding cite key value with '{}'", cite);
-        entry.citation_key = cite;
+        entry.set_cite(cite);
     }
-    let cite_key = entry.citation_key.clone();
+    let cite_key = entry.cite().to_owned();
 
     biblio.insert(entry);
 

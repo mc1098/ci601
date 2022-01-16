@@ -34,7 +34,7 @@ pub fn check_entry_field_duplication(bib: &Biblio, name: &str, value: &str) -> e
 
 #[test]
 fn field_dup_macro() {
-    use seb::ast::{EntryData, Manual, QuotedString};
+    use seb::ast::{Manual, QuotedString};
     use std::collections::HashMap;
 
     let mut bib = Biblio::new(vec![]);
@@ -44,14 +44,12 @@ fn field_dup_macro() {
     assert!(check_entry_field_duplication(&bib, name, &doi).is_ok());
 
     let data = Manual {
+        cite: String::new(),
         title: QuotedString::new("test".to_owned()),
         optional: HashMap::from([(name.to_owned(), doi.clone())]),
     };
 
-    bib.insert(Entry {
-        citation_key: String::new(),
-        entry_data: EntryData::Manual(data),
-    });
+    bib.insert(Entry::Manual(data));
 
     assert!(check_entry_field_duplication(&bib, name, &doi).is_err());
 }

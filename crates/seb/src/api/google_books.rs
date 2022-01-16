@@ -103,6 +103,7 @@ impl TryFrom<Book> for Entry {
         let title = ast::QuotedString::new(title);
 
         let data = ast::Book {
+            cite,
             author: ast::QuotedString::new(authors.join(",")),
             title,
             publisher: ast::QuotedString::new(publisher),
@@ -113,10 +114,7 @@ impl TryFrom<Book> for Entry {
             )]),
         };
 
-        Ok(Self {
-            citation_key: cite,
-            entry_data: ast::EntryData::Book(data),
-        })
+        Ok(Self::Book(data))
     }
 }
 
