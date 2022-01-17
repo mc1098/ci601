@@ -23,11 +23,11 @@ impl Format for BibTex {
 
     fn compose(ast: Biblio) -> Self {
         let s = ast
-            .into_iter()
+            .entries()
             .map(|entry| {
                 format!(
                     "@{}{{{},\n{}}}\n",
-                    compose_variant(&entry),
+                    compose_variant(entry),
                     entry.cite(),
                     compose_fields(&entry.fields())
                 )

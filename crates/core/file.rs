@@ -38,10 +38,13 @@ impl<F: Format> Writer for FormatFile<F> {
     type Format = F;
 
     fn write(&mut self, format: F) -> Result<()> {
-        let s = format.raw();
+        let bytes = format.raw().into_bytes();
+        // Rewind the cursor back to the start of the file to write over the contents and set
+        // the length of the file to be equal to bytes so that existing data is removed
         self.file.rewind()?;
+        self.file.set_len(bytes.len() as u64)?;
         self.file
-            .write_all(s.as_bytes())
+            .write_all(&bytes)
             .wrap_err_with(|| eyre!("Cannot write format to file"))
     }
 }
@@ -241,8 +244,8 @@ mod tests {
         let expected = BibTex::new(bibtex.to_owned())
             .parse()
             .expect("bibtex1 content is a valid bibtex entry")
-            .into_iter()
-            .next()
+            .into_entries()
+            .pop()
             .unwrap();
 
         let file = std::fs::File::open("./tests/data/bibtex1.bib")
@@ -250,8 +253,8 @@ mod tests {
         let mut file: FormatFile<BibTex> = FormatFile::new(file);
 
         let biblio = file.read_ast().unwrap();
-        let res = biblio.into_iter().next().unwrap();
+        let res = biblio.entries().next().unwrap();
 
-        assert_eq!(expected, res);
+        assert_eq!(&expected, res);
     }
 }

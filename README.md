@@ -10,6 +10,7 @@ Currently available subcommands:
 - seb doi
 - seb ietf
 - seb isbn
+- seb rm
 
 ## File formats
 
@@ -55,3 +56,15 @@ $ # assumes that a single .bib file exists in the current directory.
 $ seb isbn "0735619670"
 ```
 
+### `seb rm`
+
+Removes a bibliographic entry from the bibliography found in the current directory, or at the path
+specified when using the `--file` option, by the cite key.
+
+```bash
+$ # Remove bibliographic entry from the current bibliography.
+$ seb rm rfc7230
+```
+
+_"rfc7230" is the default cite key for the BibTeX format when adding an ietf entry with the RFC
+number of 7230_
