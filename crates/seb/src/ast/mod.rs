@@ -2,7 +2,7 @@
 mod entry;
 mod quoted_string;
 
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::HashMap};
 
 pub use entry::*;
 pub use quoted_string::{EscapePattern, QuotedString};
@@ -10,31 +10,58 @@ pub use quoted_string::{EscapePattern, QuotedString};
 /// An intermediate representation of a bibliography which is not tied to a specific end format.
 #[derive(Debug, PartialEq)]
 #[cfg_attr(test, derive(Clone))]
-pub struct Biblio(Vec<Entry>);
+pub struct Biblio {
+    dirty: bool,
+    entries: HashMap<String, Entry>,
+}
 
 impl Biblio {
     /// Create a new [`Biblio`] from a list of bibliography entries.
     #[must_use]
     pub fn new(entries: Vec<Entry>) -> Self {
-        Self(entries)
+        Self {
+            dirty: false,
+            entries: entries
+                .into_iter()
+                .map(|e| (e.cite().to_owned(), e))
+                .collect(),
+        }
+    }
+
+    /// Checks and resets the `dirty` flag.
+    ///
+    /// The `dirty` flag will return true when this instance has been edited since it was created.
+    /// The default value of the `dirty` flag is `false`, therefore calling this function will
+    /// always reset the `dirty` flag to `false`.
+    pub fn dirty(&mut self) -> bool {
+        let dirty = self.dirty;
+        self.dirty = false;
+        dirty
     }
 
     /// Insert a new [`Entry`].
     pub fn insert(&mut self, entry: Entry) {
-        self.0.push(entry);
+        self.dirty = true;
+        self.entries.insert(entry.cite().to_owned(), entry);
+    }
+
+    /// Remove the cite key and return the [`Entry`] value if they cite was found.
+    pub fn remove(&mut self, cite: &str) -> Option<Entry> {
+        let entry = self.entries.remove(cite);
+        self.dirty |= entry.is_some();
+        entry
     }
 
     /// Return a reference to a slice of entries.
-    #[must_use]
-    pub fn entries(&self) -> &[Entry] {
-        &self.0
+    pub fn entries(&self) -> impl Iterator<Item = &Entry> {
+        self.entries.values()
     }
 
     /// Creates entries from a value.
     #[must_use]
     #[allow(clippy::missing_const_for_fn)] // drop is not const
     pub fn into_entries(self) -> Vec<Entry> {
-        self.0
+        self.entries.into_iter().map(|(_, v)| v).collect()
     }
 
     /// Tests if any field in this [`Biblio`] matches a predicate.
@@ -53,19 +80,9 @@ impl Biblio {
     where
         P: Fn(&QuotedString) -> bool,
     {
-        self.0
-            .iter()
+        self.entries
+            .values()
             .any(|e| e.find_field(key).map(&predicate).unwrap_or_default())
-    }
-}
-
-impl IntoIterator for Biblio {
-    type Item = Entry;
-
-    type IntoIter = <Vec<Entry> as IntoIterator>::IntoIter;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
     }
 }
 
