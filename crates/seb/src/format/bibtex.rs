@@ -17,7 +17,6 @@ impl Format for BibTex {
     fn parse(self) -> Result<Biblio> {
         let biblio =
             Bibliography::parse(&self.0).ok_or_else(|| eyre!("Cannot parse the BibTex"))?;
-        dbg!("biblatex::Bibliography = {:?}", &biblio);
         let entries = biblio.into_iter().map(ast::Entry::from).collect();
         Ok(ast::Biblio::new(entries))
     }
@@ -69,7 +68,7 @@ const fn compose_variant(entry: &ast::Entry) -> &'static str {
 }
 
 fn bibtex_esc(s: &str) -> String {
-    format!("{{{}}}", s)
+    format!("{{{s}}}")
 }
 
 fn compose_fields(fields: &[ast::Field]) -> String {
@@ -158,12 +157,9 @@ mod tests {
     fn parse_then_compose_bibtex() {
         let bibtex_str = include_str!("../../../../tests/data/bibtex1.bib");
         let bibtex = BibTex::new(bibtex_str.to_owned());
-        dbg!("{:?}", &bibtex);
         let parsed = bibtex.parse().expect("bibtex1.bib is a valid bibtex entry");
 
         let composed = BibTex::compose(parsed.clone());
-
-        dbg!("{:?}", &composed);
 
         // we don't want to compare bibtex_str with composed raw as they can be different
         let parsed_two = composed

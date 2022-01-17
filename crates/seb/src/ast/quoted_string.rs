@@ -84,7 +84,7 @@ impl QuotedString {
     /// use seb::ast::QuotedString;
     ///
     /// let quoted = QuotedString::quote("foo".to_owned());
-    /// assert_eq!("{foo}", quoted.map_quoted(|s| format!("{{{}}}", s)));
+    /// assert_eq!("{foo}", quoted.map_quoted(|s| format!("{{{s}}}")));
     /// ```
     #[must_use]
     pub fn quote(value: String) -> Self {
@@ -360,7 +360,7 @@ mod tests {
             ['{', '}'],
         );
 
-        let res = string.map_quoted(|s| format!("{{{}}}", s));
+        let res = string.map_quoted(|s| format!("{{{s}}}"));
         let expected = "{QuickXsort}: A Fast Sorting Scheme in Theory and Practice";
 
         assert_eq!(expected, res);
