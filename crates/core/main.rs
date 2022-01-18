@@ -91,6 +91,22 @@ struct Cli {
 #[derive(Subcommand)]
 #[non_exhaustive]
 enum Commands {
+    /// Add an entry to the current bibliography file
+    #[clap(setting(AppSettings::ArgRequiredElseHelp))]
+    Add {
+        #[clap(subcommand)]
+        command: AddCommands,
+    },
+    /// Remove an entry from the bibliography file using the cite key
+    #[clap(setting(AppSettings::ArgRequiredElseHelp))]
+    Rm {
+        /// The cite key of the entry to remove
+        cite: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum AddCommands {
     /// Search for reference by doi
     #[clap(setting(AppSettings::ArgRequiredElseHelp))]
     Doi {
@@ -151,54 +167,39 @@ enum Commands {
         #[clap(long)]
         confirm: bool,
     },
-    /// Remove an entry from the bibliography file using the cite key
-    #[clap(setting(AppSettings::ArgRequiredElseHelp))]
-    Rm {
-        /// The cite key of the entry to remove
-        cite: String,
-    },
 }
 
-impl Commands {
+impl AddCommands {
     fn execute(self, biblio: &mut Biblio) -> eyre::Result<String> {
         let (mut entries, cite, confirm) = match self {
-            Commands::Doi { doi, cite, confirm } => {
-                dbg!("doi subcommand called with value of '{}'", &doi);
+            AddCommands::Doi { doi, cite, confirm } => {
+                dbg!("doi subcommand called with value of '{}", &doi);
                 trace!("Checking current bibliography for possible duplicate doi..");
                 app::check_entry_field_duplication(biblio, "doi", &doi)?;
                 trace!("No duplicate found!");
                 (seb::entries_by_doi(&doi)?, cite, confirm)
             }
-            Commands::Ietf {
+            AddCommands::Ietf {
                 rfc_number,
                 cite,
                 confirm,
             } => {
-                dbg!("ietf subcommand called with value of '{rfc_number}'");
+                dbg!("ietf subcommand called with value of '{}", &rfc_number);
                 trace!("Checking current bibliography for possible duplicate RFC number..");
                 app::check_entry_field_duplication(biblio, "number", &rfc_number.to_string())?;
                 trace!("No duplicate found!");
                 (seb::entries_by_rfc(rfc_number)?, cite, confirm)
             }
-            Commands::Isbn {
+            AddCommands::Isbn {
                 isbn,
                 cite,
                 confirm,
             } => {
-                dbg!("isbn subcommand called with value of '{}'", &isbn);
-                trace!("Checking current bibliography for possible duplicate isbn..");
+                dbg!("isbn subcommand called with value of '{}", &isbn);
+                trace!("Checking current bibliography for possible duplicate ISBN.");
                 app::check_entry_field_duplication(biblio, "isbn", &isbn)?;
                 trace!("No duplicate found!");
                 (seb::entries_by_isbn(&isbn)?, cite, confirm)
-            }
-            Commands::Rm { cite } => {
-                dbg!("rm subcommand called with the value of '{cite}'");
-                trace!("Checking current bibliography for entry with this cite key..");
-                return if biblio.remove(&cite).is_some() {
-                    Ok("Entry removed from bibliography".to_owned())
-                } else {
-                    Ok(format!("No entry found with the cite key of '{cite}'"))
-                };
             }
         };
 
@@ -225,5 +226,22 @@ impl Commands {
         Ok(format!(
             "Entry added to bibliography with cite key:\n{cite_key}"
         ))
+    }
+}
+
+impl Commands {
+    fn execute(self, biblio: &mut Biblio) -> eyre::Result<String> {
+        match self {
+            Commands::Add { command } => command.execute(biblio),
+            Commands::Rm { cite } => {
+                dbg!("rm subcommand called with the value of '{cite}'");
+                trace!("Checking current bibliography for entry with this cite key..");
+                if biblio.remove(&cite).is_some() {
+                    Ok("Entry removed from bibliography".to_owned())
+                } else {
+                    Ok(format!("No entry found with the cite key of '{cite}'"))
+                }
+            }
+        }
     }
 }

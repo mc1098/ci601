@@ -84,6 +84,12 @@ impl Biblio {
             .values()
             .any(|e| e.find_field(key).map(&predicate).unwrap_or_default())
     }
+
+    /// Merges one [`Biblio`] into another and replaces any existing entries with the same cite key
+    /// with the ones being merged in.
+    pub fn merge(&mut self, other: Biblio) {
+        self.entries.extend(other.entries);
+    }
 }
 
 /// An entry field which is essentially a key value pair.
