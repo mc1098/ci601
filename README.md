@@ -31,7 +31,7 @@ and add it to the current bibliography.
 ```bash
 $ # Search and add bibliographic entry to current bibliography, by default the current bibliography
 $ # assumes that a single .bib file exists in the current directory.
-$ seb doi "10.1007/s00453-019-00634-0"
+$ seb add doi "10.1007/s00453-019-00634-0"
 ```
 
 ### `seb ietf`
@@ -42,7 +42,7 @@ and add it to the current bibliography.
 ```bash
 $ # Search and add bibliographic entry to current bibliography, by default the current bibliography
 $ # assumes that a single .bib file exists in the current directory.
-$ seb ietf 7230
+$ seb add ietf 7230
 ```
 
 _[RFC 7230: Hypertext Transfer Protocol (HTTP/1.1): Message Syntax and Routing](https://datatracker.ietf.org/doc/html/rfc7230)_
@@ -55,7 +55,7 @@ and add it to the current bibliography.
 ```bash
 $ # Search and add bibliographic entry to current bibliography, by default the current bibliography
 $ # assumes that a single .bib file exists in the current directory.
-$ seb isbn 0735619670
+$ seb add isbn 0735619670
 ```
 
 ## Rm Subcommand
