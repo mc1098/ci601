@@ -2,15 +2,13 @@
 
 `seb` is a command line tool for searching and editing bibliographic entries to a supported format file.
 
-The main use of `seb` is to search for bibliographic entries by `doi`, `ISBN`, `title` etc. and then
-add one of those entries to an existing bibliographic file.
+`seb` is most useful as a tool for searching for known bibliographic entries by `doi`, `ISBN`, `title` etc.
+and then adding those entries to the bibliography file.
 
 Currently available subcommands:
 
-- seb doi
-- seb ietf
-- seb isbn
-- seb rm
+- [`seb add`](#add-subcommand)
+- [`seb rm`](#rm-subcommand)
 
 ## File formats
 
@@ -19,7 +17,11 @@ Currently available subcommands:
 Current supported formats:
 - `BibTeX` (default)
 
-## Available Subcommands
+## Add Subcommand
+
+The `add` subcommand is used to search and add a bibliographic entry to a bibliography file. The `add`
+subcommand has many subcommands for searching entries using certain identifiers, such as `doi` or `ISBN`,
+or from certain sources, such as the IETF Datatracker to search bibliographic entries for RFCs.
 
 ### `seb doi`
 
@@ -53,10 +55,10 @@ and add it to the current bibliography.
 ```bash
 $ # Search and add bibliographic entry to current bibliography, by default the current bibliography
 $ # assumes that a single .bib file exists in the current directory.
-$ seb isbn "0735619670"
+$ seb isbn 0735619670
 ```
 
-### `seb rm`
+## Rm Subcommand
 
 Removes a bibliographic entry from the bibliography found in the current directory, or at the path
 specified when using the `--file` option, by the cite key.
