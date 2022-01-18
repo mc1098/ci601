@@ -23,7 +23,7 @@ The `add` subcommand is used to search and add a bibliographic entry to a biblio
 subcommand has many subcommands for searching entries using certain identifiers, such as `doi` or `ISBN`,
 or from certain sources, such as the IETF Datatracker to search bibliographic entries for RFCs.
 
-### `seb doi`
+### `seb add doi`
 
 Search a bibliographic entry by its [Digital Object Identifier (doi)](https://en.wikipedia.org/wiki/Digital_object_identifier)
 and add it to the current bibliography.
@@ -34,7 +34,23 @@ $ # assumes that a single .bib file exists in the current directory.
 $ seb add doi "10.1007/s00453-019-00634-0"
 ```
 
-### `seb ietf`
+```bibtex
+@article{Edelkamp_2019,
+    author = {Stefan Edelkamp and Armin Wei{\ss} and Sebastian Wild},
+    title = {{QuickXsort}: A Fast Sorting Scheme in Theory and Practice},
+    journal = {Algorithmica},
+    year = {2019},
+    pages = {509--588},
+    url = {https://doi.org/10.1007%2Fs00453-019-00634-0},
+    publisher = {Springer Science and Business Media {LLC}},
+    number = {3},
+    doi = {10.1007/s00453-019-00634-0},
+    month = {oct},
+    volume = {82},
+}
+```
+
+## `seb add ietf`
 
 Search a bibliographic entry by its [IETF RFC Number](https://www.ietf.org/standards/rfcs/)
 and add it to the current bibliography.
@@ -47,7 +63,23 @@ $ seb add ietf 7230
 
 _[RFC 7230: Hypertext Transfer Protocol (HTTP/1.1): Message Syntax and Routing](https://datatracker.ietf.org/doc/html/rfc7230)_
 
-### `seb isbn`
+```bibtex
+@misc{rfc7230,
+    title = {{Hypertext Transfer Protocol (HTTP/1.1): Message Syntax and Routing}},
+    author = {Roy T. Fielding and Julian Reschke},
+    howpublished = {RFC 7230},
+    series = {Request for Comments},
+    year = {2014},
+    url = {https://rfc-editor.org/rfc/rfc7230.txt},
+    publisher = {RFC Editor},
+    number = {7230},
+    month = {June},
+    doi = {10.17487/RFC7230},
+    pagetotal = {89},
+}
+```
+
+### `seb add isbn`
 
 Search a bibliographic entry by its [International Standard Book Number (ISBN)](https://en.wikipedia.org/wiki/International_Standard_Book_Number)
 and add it to the current bibliography.
@@ -56,6 +88,16 @@ and add it to the current bibliography.
 $ # Search and add bibliographic entry to current bibliography, by default the current bibliography
 $ # assumes that a single .bib file exists in the current directory.
 $ seb add isbn 0735619670
+```
+
+```bibtex
+@book{SteveMcConnell2004,
+    author = {Steve McConnell},
+    title = {Code Complete},
+    publisher = {DV-Professional},
+    year = {2004},
+    isbn = {0735619670},
+}
 ```
 
 ## Rm Subcommand
