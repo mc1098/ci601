@@ -32,7 +32,7 @@ pub(crate) fn get_book_info(isbn: &str) -> Result<Book> {
     let builder = items
         .drain(..)
         .next()
-        .ok_or_else(|| eyre!("No Books found for ISBN of '{}', isbn"))?;
+        .ok_or_else(|| eyre!("No Books found for ISBN of '{isbn}'"))?;
 
     Ok(builder.build(isbn.to_owned()))
 }
