@@ -414,7 +414,7 @@ entry_impl! {
 /// ```
 /// use seb::ast::{Builder, Manual, QuotedString};
 ///
-/// let builder = Manual::builder("cite_key".to_owned());
+/// let builder = Manual::builder_with_cite("cite_key".to_owned());
 ///
 /// // manual only requires the `title` field to be valid
 /// assert_eq!(&["title"][..], builder.required_fields().collect::<Vec<_>>());
@@ -484,7 +484,7 @@ impl Builder {
     /// use std::borrow::Cow;
     /// use seb::ast::{Manual, QuotedString};
     ///
-    /// let mut builder = Manual::builder("cite".to_owned());
+    /// let mut builder = Manual::builder_with_cite("cite".to_owned());
     /// assert_eq!(Some(&Cow::Borrowed("title")), builder.required_fields().next());
     ///
     /// // set the `title` field then check if the required_fields is returning an empty iter.

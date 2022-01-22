@@ -243,6 +243,7 @@ mod tests {
         let bibtex = include_str!("../../tests/data/bibtex1.bib");
         let expected = BibTex::new(bibtex.to_owned())
             .parse()
+            .unwrap()
             .expect("bibtex1 content is a valid bibtex entry")
             .into_entries()
             .pop()
@@ -252,7 +253,7 @@ mod tests {
             .expect("Cannot open ./tests/data/bibtex1.bib file for test");
         let mut file: FormatFile<BibTex> = FormatFile::new(file);
 
-        let biblio = file.read_ast().unwrap();
+        let biblio = file.read_ast().unwrap().unwrap();
         let res = biblio.entries().next().unwrap();
 
         assert_eq!(&expected, res);
