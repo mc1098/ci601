@@ -13,7 +13,7 @@ use std::{error, path::PathBuf, process};
 mod app;
 mod file;
 
-use app::{user_resolve_biblio_builder, user_select, user_resolve_entry, user_select_entry};
+use app::{user_resolve_biblio_builder, user_resolve_entry, user_select, user_select_entry};
 use clap::{AppSettings, Parser, Subcommand};
 use eyre::eyre;
 use log::{info, trace};
@@ -175,9 +175,12 @@ enum AddCommands {
 
 #[allow(clippy::items_after_statements)]
 fn select_and_resolve_builder(mut builder: BiblioBuilder) -> eyre::Result<Entry> {
-    let items: Vec<_> = builder.map_iter_all(|fq| {
-        fq.get_field("title").map_or_else(|| "No title".to_owned(), |qs| qs.to_string())
-    }).collect();
+    let items: Vec<_> = builder
+        .map_iter_all(|fq| {
+            fq.get_field("title")
+                .map_or_else(|| "No title".to_owned(), |qs| qs.to_string())
+        })
+        .collect();
 
     let selection = user_select("Choose an entry", &items)?;
 
@@ -188,7 +191,6 @@ fn select_and_resolve_builder(mut builder: BiblioBuilder) -> eyre::Result<Entry>
             Ok(entry_builder.build().unwrap())
         }
     }
-
 }
 
 impl AddCommands {
@@ -225,14 +227,13 @@ impl AddCommands {
             }
         };
 
-
         let mut entry = match (confirm, bib) {
             (true, Err(_)) => return Err(eyre!("Some entries found do not have the required fields and with the --confirm flag set cannot be resolved by the user")),
             (true, Ok(bib)) => {
                 let mut entries = bib.into_entries();
                 if entries.is_empty() {
                     return Ok("No entries found!".to_owned());
-                } 
+                }
                 info!("--confirm used - picking the first entry found..");
                 entries.remove(0)
             },
