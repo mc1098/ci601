@@ -1,8 +1,10 @@
-use eyre::Result;
+use crate::{
+    api::format_api,
+    ast::{Biblio, BiblioBuilder},
+    format::BibTex,
+};
 
-use crate::{api::format_api, format::BibTex, Entry};
-
-pub(crate) fn get_entries_by_doi(doi: &str) -> Result<Vec<Entry>> {
+pub(crate) fn get_entries_by_doi(doi: &str) -> eyre::Result<Result<Biblio, BiblioBuilder>> {
     let url = format!(
         "https://api.crossref.org/works/{}/transform/application/x-bibtex",
         doi

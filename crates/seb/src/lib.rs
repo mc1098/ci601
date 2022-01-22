@@ -20,9 +20,8 @@ pub mod ast;
 pub mod format;
 pub mod parse;
 
-use ast::{Biblio, Entry};
+use ast::{Biblio, BiblioBuilder};
 
-use eyre::Result;
 use format::Format;
 use log::trace;
 
@@ -36,7 +35,7 @@ use log::trace;
 /// An [`Err`] is returned when no entry is found for the `doi`.
 /// An [`Err`] is returned when the response from the API cannot be parsed into a valid [`Entry`].
 #[inline]
-pub fn entries_by_doi(doi: &str) -> Result<Vec<Entry>> {
+pub fn entries_by_doi(doi: &str) -> eyre::Result<Result<Biblio, BiblioBuilder>> {
     trace!("Search entries by doi of '{}'", doi);
     api::cross_ref::get_entries_by_doi(doi)
 }
@@ -51,7 +50,7 @@ pub fn entries_by_doi(doi: &str) -> Result<Vec<Entry>> {
 /// An [`Err`] is returned when no entry is found for the `isbn`.
 /// An [`Err`] is returned when the response from the API cannot be parsed into a valid [`Entry`].
 #[inline]
-pub fn entries_by_isbn(isbn: &str) -> Result<Vec<Entry>> {
+pub fn entries_by_isbn(isbn: &str) -> eyre::Result<Result<Biblio, BiblioBuilder>> {
     trace!("Search entries by ISBN of '{}'", isbn);
     api::google_books::get_entries_by_isbn(isbn)
 }
@@ -67,7 +66,7 @@ pub fn entries_by_isbn(isbn: &str) -> Result<Vec<Entry>> {
 /// An [`Err`] is returned when an error occurs trying to retrive the textual data from the url.
 /// An [`Err`] is returned when the response from the API cannot be parsed into a valid [`Entry`].
 #[inline]
-pub fn entries_by_rfc(number: usize) -> Result<Vec<Entry>> {
+pub fn entries_by_rfc(number: usize) -> eyre::Result<Result<Biblio, BiblioBuilder>> {
     trace!("Search entries by IETF RFC number '{number}'");
     api::ietf::get_entry_by_rfc(number)
 }
@@ -81,7 +80,7 @@ pub fn entries_by_rfc(number: usize) -> Result<Vec<Entry>> {
 /// An [`Err`] is returned when an error occurs trying to retrive the textual data from the url.
 /// An [`Err`] is returned when the response from the API cannot be parsed into a valid [`Entry`].
 #[inline]
-pub fn entries_by_url<F: Format>(url: &str) -> Result<Vec<Entry>> {
+pub fn entries_by_url<F: Format>(url: &str) -> eyre::Result<Result<Biblio, BiblioBuilder>> {
     trace!("Search entries at url of '{}'", url);
     api::format_api::get_entry_by_url::<F>(url)
 }

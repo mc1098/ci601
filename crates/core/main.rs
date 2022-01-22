@@ -13,10 +13,12 @@ use std::{error, path::PathBuf, process};
 mod app;
 mod file;
 
+use app::{user_resolve_biblio_builder, user_select, user_resolve_entry, user_select_entry};
 use clap::{AppSettings, Parser, Subcommand};
+use eyre::eyre;
 use log::{info, trace};
 use seb::{
-    ast::Biblio,
+    ast::{Biblio, BiblioBuilder, Entry},
     format::{BibTex, Reader, Writer},
 };
 
@@ -38,7 +40,9 @@ fn try_main() -> Result<(), Box<dyn error::Error>> {
     setup_errlog(verbosity as usize, quiet)?;
 
     let mut file = file::open_or_create_format_file::<BibTex>(file)?;
-    let mut biblio = file.read_ast()?;
+    let biblio = file.read_ast()?;
+
+    let mut biblio = user_resolve_biblio_builder(biblio)?;
 
     let message = command.execute(&mut biblio)?;
 
@@ -169,9 +173,27 @@ enum AddCommands {
     },
 }
 
+#[allow(clippy::items_after_statements)]
+fn select_and_resolve_builder(mut builder: BiblioBuilder) -> eyre::Result<Entry> {
+    let items: Vec<_> = builder.map_iter_all(|fq| {
+        fq.get_field("title").map_or_else(|| "No title".to_owned(), |qs| qs.to_string())
+    }).collect();
+
+    let selection = user_select("Choose an entry", &items)?;
+
+    match builder.checked_remove(selection).unwrap() {
+        Ok(entry) => Ok(entry),
+        Err(mut entry_builder) => {
+            user_resolve_entry(&mut entry_builder)?;
+            Ok(entry_builder.build().unwrap())
+        }
+    }
+
+}
+
 impl AddCommands {
     fn execute(self, biblio: &mut Biblio) -> eyre::Result<String> {
-        let (mut entries, cite, confirm) = match self {
+        let (bib, cite, confirm) = match self {
             AddCommands::Doi { doi, cite, confirm } => {
                 dbg!("doi subcommand called with value of '{}", &doi);
                 trace!("Checking current bibliography for possible duplicate doi..");
@@ -203,16 +225,19 @@ impl AddCommands {
             }
         };
 
-        if entries.is_empty() {
-            return Ok("No entries found!".to_owned());
-        }
 
-        let mut entry = if confirm {
-            info!("--confirm used - picking the first entry found..");
-            // remove(0) won't panic because of the is_empty check above!
-            entries.remove(0)
-        } else {
-            app::user_select(entries)?
+        let mut entry = match (confirm, bib) {
+            (true, Err(_)) => return Err(eyre!("Some entries found do not have the required fields and with the --confirm flag set cannot be resolved by the user")),
+            (true, Ok(bib)) => {
+                let mut entries = bib.into_entries();
+                if entries.is_empty() {
+                    return Ok("No entries found!".to_owned());
+                } 
+                info!("--confirm used - picking the first entry found..");
+                entries.remove(0)
+            },
+            (_, Err(builder)) => select_and_resolve_builder(builder)?,
+            (_, Ok(bib)) => user_select_entry(bib.into_entries())?,
         };
 
         if let Some(cite) = cite {

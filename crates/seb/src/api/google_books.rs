@@ -2,14 +2,17 @@ use eyre::{eyre, Context, Result};
 use log::{info, trace};
 use serde::Deserialize;
 
-use crate::ast::{self, Entry};
+use crate::ast::{self, Biblio, BiblioBuilder, Entry};
 
 const GOOGLE_BOOKS_URL: &str = "https://www.googleapis.com/books/v1/volumes?q=isbn:";
 
-pub(crate) fn get_entries_by_isbn(isbn: &str) -> Result<Vec<Entry>> {
+pub(crate) fn get_entries_by_isbn(
+    isbn: &str,
+) -> Result<std::result::Result<Biblio, BiblioBuilder>> {
     get_book_info(isbn)
         .and_then(Entry::try_from)
         .map(|e| vec![e])
+        .map(|entries| Ok(Biblio::new(entries)))
 }
 
 pub(crate) fn get_book_info(isbn: &str) -> Result<Book> {
@@ -97,6 +100,10 @@ impl TryFrom<Book> for Entry {
         let mut cite = authors
             .get(0)
             .cloned()
+            .map(|mut s| {
+                s.retain(|c| !c.is_whitespace());
+                s
+            })
             .ok_or_else(|| eyre!("Not authors found from resource response"))?;
         cite.push_str(&year);
 

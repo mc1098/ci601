@@ -1,11 +1,13 @@
 use crate::{
-    ast::{Biblio, Entry},
+    ast::{Biblio, BiblioBuilder},
     format::Format,
 };
 
 use eyre::{eyre, Context, Result};
 
-pub(crate) fn get_entry_by_url<F: Format>(url: &str) -> Result<Vec<Entry>> {
+pub(crate) fn get_entry_by_url<F: Format>(
+    url: &str,
+) -> Result<std::result::Result<Biblio, BiblioBuilder>> {
     let client = reqwest::blocking::Client::new();
     client
         .get(url)
@@ -19,12 +21,4 @@ pub(crate) fn get_entry_by_url<F: Format>(url: &str) -> Result<Vec<Entry>> {
             )
         })
         .and_then(Format::parse)
-        .map(Biblio::into_entries)
-        .and_then(|entries| {
-            if entries.is_empty() {
-                Err(eyre!("No entry found at the url: `{}`"))
-            } else {
-                Ok(entries)
-            }
-        })
 }
