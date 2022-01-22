@@ -2,10 +2,143 @@
 mod entry;
 mod quoted_string;
 
-use std::{borrow::Cow, collections::HashMap};
+use std::{borrow::Cow, collections::HashMap, marker::PhantomData};
 
 pub use entry::*;
 pub use quoted_string::{EscapePattern, QuotedString};
+
+/// A [`Biblio`] builder used for managing a set of entry builders until they all succeed in order
+/// to make a [`Biblio`] with valid entries in.
+#[derive(Debug)]
+pub struct BiblioBuilder {
+    builders: Vec<Builder>,
+    entries: Vec<Entry>,
+}
+
+impl BiblioBuilder {
+    /// Attempts to build all of the entry builders and returns the [`Biblio`] if all of them
+    /// succeed.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Err(Self)`] if one of the entry builders fail, this allows for resolving the
+    /// entry builders that failed and then retrying the build.
+    pub fn build(mut self) -> Result<Biblio, Self> {
+        let (built, builders): (Vec<_>, Vec<_>) =
+            try_partition(self.builders.into_iter().map(Builder::build));
+
+        self.entries.extend(built);
+
+        if builders.is_empty() {
+            Ok(Biblio {
+                dirty: false,
+                entries: self
+                    .entries
+                    .into_iter()
+                    .map(|e| (e.cite().to_owned(), e))
+                    .collect(),
+            })
+        } else {
+            self.builders = builders;
+            Err(self)
+        }
+    }
+
+    /// Returns the builders that failed to build so that missing fields can be set before trying
+    /// to call [`BiblioBuilder::build`] again.
+    pub fn unresolved(&mut self) -> impl Iterator<Item = &mut Builder> {
+        self.builders.iter_mut()
+    }
+
+    /// Removes either the entry or builder based on the index.
+    ///
+    /// The [`BiblioBuilder`] can contain both resolvd entries or builders and does so in this
+    /// order, therefore the index can be used to retrieve either.
+    ///
+    /// The index should be found using the [`BiblioBuilder::map_iter_all`] iterator as this
+    /// iterator is in the same order.
+    pub fn checked_remove(&mut self, index: usize) -> Option<Result<Entry, Builder>> {
+        if index < self.entries.len() {
+            Some(Ok(self.entries.remove(index)))
+        } else if index - self.entries.len() < self.builders.len() {
+            Some(Err(self.builders.remove(index - self.entries.len())))
+        } else {
+            None
+        }
+    }
+
+    /// Returns an iterator of the result of the closure which is applied over both the resolve
+    /// entries and unresolved builders.
+    pub fn map_iter_all<F, T>(&self, f: F) -> MapIter<'_, F, T>
+    where
+        F: Fn(&dyn FieldQuery) -> T,
+    {
+        MapIter::new(self, f)
+    }
+}
+
+/// Iterator of the resolved and unresolved entries a [`BiblioBuilder`] based on the result of a
+/// closure given.
+pub struct MapIter<'builder, F, T> {
+    builder: &'builder BiblioBuilder,
+    index: usize,
+    f: F,
+    _item: PhantomData<T>,
+}
+
+impl<'builder, F, T> MapIter<'builder, F, T>
+where
+    F: Fn(&dyn FieldQuery) -> T,
+{
+    fn new(builder: &'builder BiblioBuilder, f: F) -> Self {
+        Self {
+            builder,
+            f,
+            index: 0,
+            _item: PhantomData,
+        }
+    }
+}
+
+impl<F, T> Iterator for MapIter<'_, F, T>
+where
+    F: Fn(&dyn FieldQuery) -> T,
+{
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let entries_size = self.builder.entries.len();
+
+        if self.index < entries_size {
+            let index = self.index;
+            self.index += 1;
+            self.builder.entries.get(index).map(|entry| (self.f)(entry))
+        } else {
+            let index = self.index - entries_size;
+            self.index += 1;
+            self.builder
+                .builders
+                .get(index)
+                .map(|builder| (self.f)(builder))
+        }
+    }
+}
+
+fn try_partition<T, E, B, R>(iter: impl Iterator<Item = Result<T, E>>) -> (B, R)
+where
+    B: Default + Extend<T>,
+    R: Default + Extend<E>,
+{
+    let mut left = B::default();
+    let mut right = R::default();
+
+    iter.fold((), |_, res| match res {
+        Err(r) => right.extend([r]),
+        l => left.extend(l),
+    });
+
+    (left, right)
+}
 
 /// An intermediate representation of a bibliography which is not tied to a specific end format.
 #[derive(Debug, PartialEq)]
@@ -26,6 +159,21 @@ impl Biblio {
                 .map(|e| (e.cite().to_owned(), e))
                 .collect(),
         }
+    }
+
+    /// Attempts to build all of the entry builders and if they all succeed then returns a
+    /// [`Biblio`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Err(BiblioBuilder)`] if one of the entry builders fail, this allows resolving
+    /// the builders and retrying the build.
+    pub fn try_build(builders: Vec<Builder>) -> Result<Self, BiblioBuilder> {
+        BiblioBuilder {
+            builders,
+            entries: Vec::new(),
+        }
+        .build()
     }
 
     /// Checks and resets the `dirty` flag.

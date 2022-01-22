@@ -5,10 +5,8 @@ use std::marker::PhantomData;
 
 mod bibtex;
 
-use crate::ast::Biblio;
+use crate::ast::{Biblio, BiblioBuilder};
 pub use bibtex::BibTex;
-
-use eyre::Result;
 
 // TODO: Consider defining Format so that it can wrap T types, where T: std::io::Write +
 // std::io::Read. This would allow Format to trivially uphold the same type bounds as T and would
@@ -29,7 +27,7 @@ pub trait Format {
     /// # Errors
     ///
     /// Will return [`Err`] if it's not possible to parse this [`Format`] to [`Biblio`].
-    fn parse(self) -> Result<Biblio>;
+    fn parse(self) -> eyre::Result<std::result::Result<Biblio, BiblioBuilder>>;
 
     /// Composes a [`Biblio`] to this [`Format`].
     ///
@@ -73,7 +71,7 @@ pub trait Writer {
     ///
     /// The call to write should only return an [`Err`] when writing to the writer cannot be
     /// completed.
-    fn write(&mut self, format: Self::Format) -> Result<()>;
+    fn write(&mut self, format: Self::Format) -> eyre::Result<()>;
 
     /// Write a [`Biblio`] into this writer using [`Format::compose`] from the [`Writer::Format`]
     /// associated type.
@@ -82,7 +80,7 @@ pub trait Writer {
     ///
     /// The call to write should only return an [`Err`] when writing to the writer cannot be
     /// completed.
-    fn write_ast(&mut self, ast: Biblio) -> Result<()> {
+    fn write_ast(&mut self, ast: Biblio) -> eyre::Result<()> {
         let format = Self::Format::compose(ast);
         self.write(format)
     }
@@ -103,7 +101,7 @@ pub trait Reader {
     /// # Errors
     /// If this method encounters any form of error making it unable to read the bytes in order to
     /// create the format.
-    fn read(&mut self) -> Result<Self::Format>;
+    fn read(&mut self) -> eyre::Result<Self::Format>;
 
     /// Read bytes from this writer using [`Reader::read`] and then parse using [`Format::parse`]
     /// with the associated [`Reader::Format`] type.
@@ -111,7 +109,7 @@ pub trait Reader {
     /// # Errors
     /// This will return [`Err`] if there is an error from [`Reader::read`] or an error when parsing
     /// using [`Format::parse`].
-    fn read_ast(&mut self) -> Result<Biblio> {
+    fn read_ast(&mut self) -> eyre::Result<std::result::Result<Biblio, BiblioBuilder>> {
         let format = self.read()?;
         format.parse()
     }
@@ -155,7 +153,7 @@ impl<F: Format> From<FormatString<F>> for String {
 impl<F: Format> Reader for FormatString<F> {
     type Format = F;
 
-    fn read(&mut self) -> Result<Self::Format> {
+    fn read(&mut self) -> eyre::Result<Self::Format> {
         Ok(F::new(self.inner.clone()))
     }
 }
@@ -163,7 +161,7 @@ impl<F: Format> Reader for FormatString<F> {
 impl<F: Format> Writer for FormatString<F> {
     type Format = F;
 
-    fn write(&mut self, format: F) -> Result<()> {
+    fn write(&mut self, format: F) -> eyre::Result<()> {
         self.inner.push_str(&format.raw());
         Ok(())
     }

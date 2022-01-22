@@ -5,6 +5,16 @@ use std::{
 
 use super::{Field, QuotedString};
 
+/// Trait for querying data structures with fields.
+pub trait FieldQuery {
+    /// Searches for a field value that matches the `name` given.
+    ///
+    /// [`Self::find_field`] returns `Some(&QuotedString)` when a matching field is found
+    /// and the return is the value of that matching field, returns `None` when no field
+    /// matches the `name`.
+    fn get_field(&self, name: &str) -> Option<&QuotedString>;
+}
+
 const fn tuple_to_field<'name, 'value>(
     (name, value): (&'name str, &'value QuotedString),
 ) -> Field<'name, 'value> {
@@ -85,6 +95,15 @@ macro_rules! entry_impl {
                 }
             }
         }
+
+        impl FieldQuery for Entry {
+            fn get_field(&self, name: &str) -> Option<&QuotedString> {
+                match self {
+                    $(Self::$target(data) => data.get_field(name),)*
+                }
+            }
+        }
+
         $(
             pub use $mod::*;
             mod $mod {
@@ -145,10 +164,25 @@ macro_rules! entry_impl {
 
                     /// Creates a new [`Builder`] for this type to ensure that the required fields
                     /// are set before the entry type can be built.
+                    ///
+                    /// Does not set the cite value of the builder so will be generated based on
+                    /// the field values.
                     #[must_use]
-                    pub fn builder<S: Into<String>>(cite: S) -> Builder {
+                    pub fn builder() -> Builder {
                         Builder {
-                            cite: cite.into(),
+                            cite: None,
+                            req: [$(Cow::Borrowed(stringify!($req)),)+].into_iter().collect(),
+                            fields: HashMap::new(),
+                            entry_build: build,
+                        }
+                    }
+
+                    /// Creates a new [`Builder`] for this type to ensure that the required fields
+                    /// are set before the entry type can be built.
+                    #[must_use]
+                    pub fn builder_with_cite<S: Into<String>>(cite: S) -> Builder {
+                        Builder {
+                            cite: Some(cite.into()),
                             req: [$(Cow::Borrowed(stringify!($req)),)+].into_iter().collect(),
                             fields: HashMap::new(),
                             entry_build: build,
@@ -156,9 +190,21 @@ macro_rules! entry_impl {
                     }
                 }
 
+                impl FieldQuery for $target {
+                    fn get_field(&self, name: &str) -> Option<&QuotedString> {
+                        let normal_name = name.to_lowercase();
+                        match normal_name.as_str() {
+                            $(stringify!($req) => Some(&self.$req),)+
+                            s => self.optional.get(s),
+                        }
+                    }
+                }
+
                 fn build(mut builder: Builder) -> Entry {
+                    let cite = builder.cite().to_string();
+
                     let data = $target {
-                        cite: builder.cite,
+                        cite,
                         $($req: builder.fields.remove(stringify!($req)).unwrap(),)+
                         optional: builder.fields,
                     };
@@ -170,7 +216,7 @@ macro_rules! entry_impl {
                 fn builder_only_returns_ok_when_all_required_fields_set() {
                     use std::collections::VecDeque;
 
-                    let mut builder = $target::builder("key".to_owned());
+                    let mut builder = $target::builder();
                     let mut required: VecDeque<_> = [$(stringify!($req),)+].into_iter().collect();
 
                     let iter = std::iter::from_fn(move || required.pop_front());
@@ -368,7 +414,7 @@ entry_impl! {
 /// ```
 /// use seb::ast::{Builder, Manual, QuotedString};
 ///
-/// let builder = Manual::builder("cite_key".to_owned());
+/// let builder = Manual::builder_with_cite("cite_key".to_owned());
 ///
 /// // manual only requires the `title` field to be valid
 /// assert_eq!(&["title"][..], builder.required_fields().collect::<Vec<_>>());
@@ -384,13 +430,38 @@ entry_impl! {
 ///
 #[derive(Debug)]
 pub struct Builder {
-    cite: String,
+    cite: Option<String>,
     req: HashSet<Cow<'static, str>>,
     fields: HashMap<String, QuotedString>,
     entry_build: fn(Self) -> Entry,
 }
 
 impl Builder {
+    /// Returns the cite key for the entry being built.
+    ///
+    /// The cite key may either be a known value given to the builder or will be generated using
+    /// the `author` and `year` field if available.
+    #[must_use]
+    pub fn cite(&self) -> Cow<'_, str> {
+        if let Some(cite) = &self.cite {
+            Cow::Borrowed(cite.as_str())
+        } else {
+            let author = self.get_field("author").map_or_else(
+                || "Unknown".to_owned(),
+                |qs| {
+                    let mut s = qs.to_string();
+                    s.retain(|c| !c.is_whitespace());
+                    s
+                },
+            );
+
+            let year = self
+                .get_field("year")
+                .map_or_else(|| "year".to_owned(), |qs| qs.to_string());
+            Cow::Owned(format!("{author}{year}"))
+        }
+    }
+
     /// Build an entry from the fields added in this builder.
     ///
     /// # Errors
@@ -413,7 +484,7 @@ impl Builder {
     /// use std::borrow::Cow;
     /// use seb::ast::{Manual, QuotedString};
     ///
-    /// let mut builder = Manual::builder("cite".to_owned());
+    /// let mut builder = Manual::builder_with_cite("cite".to_owned());
     /// assert_eq!(Some(&Cow::Borrowed("title")), builder.required_fields().next());
     ///
     /// // set the `title` field then check if the required_fields is returning an empty iter.
@@ -441,6 +512,12 @@ impl Builder {
     fn set_normalized_field(&mut self, name: String, value: QuotedString) {
         self.req.remove(name.as_str());
         self.fields.insert(name, value);
+    }
+}
+
+impl FieldQuery for Builder {
+    fn get_field(&self, name: &str) -> Option<&QuotedString> {
+        self.fields.get(name)
     }
 }
 
