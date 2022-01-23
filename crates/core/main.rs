@@ -12,13 +12,14 @@ use std::{error, path::PathBuf, process};
 
 mod app;
 mod file;
+mod interact;
 
-use app::{user_resolve_biblio_builder, user_resolve_entry, user_select, user_select_entry};
+use app::select_entry;
 use clap::{AppSettings, Parser, Subcommand};
-use eyre::eyre;
-use log::{info, trace};
+use interact::user_resolve_biblio_builder;
+use log::trace;
 use seb::{
-    ast::{Biblio, BiblioBuilder, Entry},
+    ast::Biblio,
     format::{BibTex, Reader, Writer},
 };
 
@@ -42,15 +43,20 @@ fn try_main() -> Result<(), Box<dyn error::Error>> {
     let mut file = file::open_or_create_format_file::<BibTex>(file)?;
     let biblio = file.read_ast()?;
 
-    let mut biblio = user_resolve_biblio_builder(biblio)?;
+    let mut biblio = match biblio {
+        Ok(biblio) => biblio,
+        Err(builder) => user_resolve_biblio_builder(builder)?,
+    };
 
-    let message = command.execute(&mut biblio)?;
+    let command_res = command.execute(&mut biblio);
 
     if biblio.dirty() {
         trace!("Updating the bibliography file..");
         file.write_ast(biblio)?;
         trace!("Done!");
     }
+
+    let message = command_res?;
     println!("{message}");
     Ok(())
 }
@@ -173,26 +179,6 @@ enum AddCommands {
     },
 }
 
-#[allow(clippy::items_after_statements)]
-fn select_and_resolve_builder(mut builder: BiblioBuilder) -> eyre::Result<Entry> {
-    let items: Vec<_> = builder
-        .map_iter_all(|fq| {
-            fq.get_field("title")
-                .map_or_else(|| "No title".to_owned(), |qs| qs.to_string())
-        })
-        .collect();
-
-    let selection = user_select("Choose an entry", &items)?;
-
-    match builder.checked_remove(selection).unwrap() {
-        Ok(entry) => Ok(entry),
-        Err(mut entry_builder) => {
-            user_resolve_entry(&mut entry_builder)?;
-            Ok(entry_builder.build().unwrap())
-        }
-    }
-}
-
 impl AddCommands {
     fn execute(self, biblio: &mut Biblio) -> eyre::Result<String> {
         let (bib, cite, confirm) = match self {
@@ -227,31 +213,15 @@ impl AddCommands {
             }
         };
 
-        let mut entry = match (confirm, bib) {
-            (true, Err(_)) => return Err(eyre!("Some entries found do not have the required fields and with the --confirm flag set cannot be resolved by the user")),
-            (true, Ok(bib)) => {
-                let mut entries = bib.into_entries();
-                if entries.is_empty() {
-                    return Ok("No entries found!".to_owned());
-                }
-                info!("--confirm used - picking the first entry found..");
-                entries.remove(0)
-            },
-            (_, Err(builder)) => select_and_resolve_builder(builder)?,
-            (_, Ok(bib)) => user_select_entry(bib.into_entries())?,
-        };
-
-        if let Some(cite) = cite {
-            info!("Overriding cite key value with '{cite}'");
-            entry.set_cite(cite);
+        if let Some(entry) = select_entry(bib, cite, confirm)? {
+            let cite_key = entry.cite().to_owned();
+            biblio.insert(entry);
+            Ok(format!(
+                "Entry added to bibliography with cite key:\n{cite_key}"
+            ))
+        } else {
+            Ok("No entries found!".to_owned())
         }
-        let cite_key = entry.cite().to_owned();
-
-        biblio.insert(entry);
-
-        Ok(format!(
-            "Entry added to bibliography with cite key:\n{cite_key}"
-        ))
     }
 }
 

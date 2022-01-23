@@ -1,73 +1,78 @@
-use dialoguer::Input;
-use eyre::{eyre, Context, Result};
-use seb::ast::{Biblio, BiblioBuilder, Builder, Entry, FieldQuery, QuotedString};
+use eyre::eyre;
+use log::info;
+use seb::ast::{Biblio, BiblioBuilder, Builder, Entry};
 
-pub fn user_select<S: ToString>(prompt: &str, items: &[S]) -> Result<usize> {
-    let selection = dialoguer::Select::with_theme(&dialoguer::theme::ColorfulTheme::default())
-        .with_prompt(prompt)
-        .default(0)
-        .items(items)
-        .interact_opt()
-        .wrap_err_with(|| eyre!("User selection cancelled"))?;
+use crate::interact::{user_resolve_entry, user_select, user_select_entry};
 
-    if let Some(index) = selection {
-        Ok(index)
-    } else {
-        Err(eyre!("No selection made - cancelling operation"))
+pub fn select_entry(
+    bib: Result<Biblio, BiblioBuilder>,
+    cite: Option<String>,
+    confirm: bool,
+) -> eyre::Result<Option<Entry>> {
+    let mut entry = match (confirm, bib) {
+        (_, Ok(bib)) => {
+            if let Some(entry) = select_from_resolved(bib, confirm)? {
+                entry
+            } else {
+                return Ok(None);
+            }
+        },
+        (true, Err(_)) => return Err(eyre!("Some entries found do not have the required fields and with the --confirm flag set cannot be resolved by the user")),
+        (_, Err(builder)) => select_and_resolve_builder(builder)?,
+    };
+
+    if let Some(cite) = cite {
+        info!("Overriding cite key value with '{cite}'");
+        entry.set_cite(cite);
     }
+
+    Ok(Some(entry))
 }
 
-pub fn user_select_entry(mut entries: Vec<Entry>) -> Result<Entry> {
-    let selection = dialoguer::Select::with_theme(&dialoguer::theme::ColorfulTheme::default())
-        .with_prompt("Confirm entry")
-        .default(0)
-        .items(&entries_titles(&entries))
-        .interact_opt()
-        .unwrap();
-
-    if let Some(index) = selection {
-        Ok(entries.remove(index))
-    } else {
-        Err(eyre!("No entry confirmed - cancelling operation"))
-    }
-}
-
-fn entries_titles(entries: &[Entry]) -> Vec<String> {
-    entries.iter().map(|e| e.title().to_string()).collect()
-}
-
-pub fn user_input(prompt: String) -> Result<String> {
-    Input::new()
-        .with_prompt(prompt)
-        .interact_text()
-        .wrap_err_with(|| eyre!("User input cancelled"))
-}
-
-pub fn user_resolve_biblio_builder(mut res: Result<Biblio, BiblioBuilder>) -> eyre::Result<Biblio> {
-    while let Err(mut builder) = res {
-        for entry_builder in builder.unresolved() {
-            user_resolve_entry(entry_builder)?;
+fn select_from_resolved(bib: Biblio, confirm: bool) -> eyre::Result<Option<Entry>> {
+    let mut entries = bib.into_entries();
+    if confirm {
+        if entries.is_empty() {
+            Ok(None)
+        } else {
+            info!("--confirm used - picking the first entry found..");
+            Ok(Some(entries.remove(0)))
         }
-        res = builder.build();
+    } else {
+        user_select_entry(entries).map(Some)
     }
-
-    // unwrap is safe because of the termination of the while let Err loop above.
-    Ok(res.unwrap())
 }
 
-pub fn user_resolve_entry(builder: &mut Builder) -> eyre::Result<()> {
-    let title = builder
-        .get_field("title")
-        .map_or_else(|| "No title".to_owned(), |qs| qs.to_string());
-    println!("Missing required fields for entry: {title}");
+fn select_from_builder(mut builder: BiblioBuilder) -> eyre::Result<Result<Entry, Builder>> {
+    let items = builder
+        .map_iter_all(|fq| {
+            fq.get_field("title")
+                .map_or_else(|| "No title".to_owned(), |qs| qs.to_string())
+        })
+        .collect::<Vec<_>>();
 
-    let fields: Vec<_> = builder.required_fields().cloned().collect();
+    let selection = user_select("Choose an entry", &items)?;
+    builder.checked_remove(selection).ok_or_else(|| {
+        eyre!("Internal error: user selection should be valid and not cause an out of index error")
+    })
+}
 
-    for field in fields {
-        let input = user_input(format!("Enter value for the {field} field"))?;
-        builder.set_field(&field, QuotedString::new(input));
+fn select_and_resolve_builder(builder: BiblioBuilder) -> eyre::Result<Entry> {
+    #[inline]
+    fn resolve_entry_builder(entry_builder: Builder) -> eyre::Result<Entry> {
+        let mut res = Err(entry_builder);
+        loop {
+            match res {
+                Ok(entry) => return Ok(entry),
+                Err(mut entry_builder) => {
+                    user_resolve_entry(&mut entry_builder)?;
+                    res = entry_builder.build();
+                }
+            }
+        }
     }
-    Ok(())
+
+    select_from_builder(builder)?.or_else(resolve_entry_builder)
 }
 
 pub fn check_entry_field_duplication(bib: &Biblio, name: &str, value: &str) -> eyre::Result<()> {
@@ -84,6 +89,8 @@ pub fn check_entry_field_duplication(bib: &Biblio, name: &str, value: &str) -> e
 
 #[test]
 fn field_dup_macro() {
+    use seb::ast::Entry;
+
     use seb::ast::{Manual, QuotedString};
     use std::collections::HashMap;
 
