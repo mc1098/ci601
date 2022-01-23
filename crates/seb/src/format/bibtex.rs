@@ -72,7 +72,6 @@ fn bibtex_esc(s: &str) -> String {
 }
 
 fn compose_fields(fields: &[ast::Field]) -> String {
-    dbg!("fields = {:?}", &fields);
     fields
         .iter()
         .map(|field| {

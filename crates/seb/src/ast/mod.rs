@@ -11,6 +11,7 @@ pub use quoted_string::{EscapePattern, QuotedString};
 /// to make a [`Biblio`] with valid entries in.
 #[derive(Debug)]
 pub struct BiblioBuilder {
+    failed: bool,
     builders: Vec<Builder>,
     entries: Vec<Entry>,
 }
@@ -31,7 +32,7 @@ impl BiblioBuilder {
 
         if builders.is_empty() {
             Ok(Biblio {
-                dirty: false,
+                dirty: self.failed,
                 entries: self
                     .entries
                     .into_iter()
@@ -40,6 +41,7 @@ impl BiblioBuilder {
             })
         } else {
             self.builders = builders;
+            self.failed = true;
             Err(self)
         }
     }
@@ -170,6 +172,7 @@ impl Biblio {
     /// the builders and retrying the build.
     pub fn try_build(builders: Vec<Builder>) -> Result<Self, BiblioBuilder> {
         BiblioBuilder {
+            failed: false,
             builders,
             entries: Vec::new(),
         }
