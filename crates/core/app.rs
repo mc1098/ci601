@@ -1,6 +1,6 @@
 use eyre::eyre;
 use log::info;
-use seb::ast::{Biblio, BiblioBuilder, Builder, Entry};
+use seb::ast::{Biblio, BiblioBuilder, Builder as EntryBuilder, Entry};
 
 use crate::interact::{user_resolve_entry, user_select, user_select_entry};
 
@@ -43,7 +43,7 @@ fn select_from_resolved(bib: Biblio, confirm: bool) -> eyre::Result<Option<Entry
     }
 }
 
-fn select_from_builder(mut builder: BiblioBuilder) -> eyre::Result<Result<Entry, Builder>> {
+fn select_from_builder(mut builder: BiblioBuilder) -> eyre::Result<Result<Entry, EntryBuilder>> {
     let items = builder
         .map_iter_all(|fq| {
             fq.get_field("title")
@@ -59,7 +59,7 @@ fn select_from_builder(mut builder: BiblioBuilder) -> eyre::Result<Result<Entry,
 
 fn select_and_resolve_builder(builder: BiblioBuilder) -> eyre::Result<Entry> {
     #[inline]
-    fn resolve_entry_builder(entry_builder: Builder) -> eyre::Result<Entry> {
+    fn resolve_entry_builder(entry_builder: EntryBuilder) -> eyre::Result<Entry> {
         let mut res = Err(entry_builder);
         loop {
             match res {
