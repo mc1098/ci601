@@ -190,26 +190,26 @@ impl AddCommands {
     }
 
     fn interact_execute(self, biblio: &mut Biblio) -> eyre::Result<Entry> {
-        let bib = self.search_entries(&biblio)?;
+        let bib = self.search_entries(biblio)?;
         let mut entry = user_select_resolvable(bib)?.or_else(resolve_entry_builder)?;
         self.set_cite(&mut entry);
         Ok(entry)
     }
 
     fn detached_execute(self, biblio: &Biblio) -> eyre::Result<Entry> {
-        let mut entry = self.take_entry(&biblio)?;
+        let mut entry = self.take_entry(biblio)?;
         self.set_cite(&mut entry);
         Ok(entry)
     }
 
     fn take_entry(&self, biblio: &Biblio) -> eyre::Result<Entry> {
         let bib = self.search_entries(biblio)?;
-        take_first_resolvable(bib).or_else(|_| {
-            Err(eyre!(
+        take_first_resolvable(bib).map_err(|_| {
+            eyre!(
                 "Entry choosen has missing required fields!\n \
                                    hint: Missing fields can be added manually when the \
                                    `--interact` flag is enabled"
-            ))
+            )
         })
     }
 
