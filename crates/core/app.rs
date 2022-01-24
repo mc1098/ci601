@@ -1,45 +1,20 @@
 use eyre::eyre;
-use log::info;
 use seb::ast::{Biblio, BiblioBuilder, Builder as EntryBuilder, Entry};
 
 use crate::interact::{user_resolve_entry, user_select, user_select_entry};
 
-pub fn select_entry(
-    bib: Result<Biblio, BiblioBuilder>,
-    cite: Option<String>,
-    confirm: bool,
-) -> eyre::Result<Option<Entry>> {
-    let mut entry = match (confirm, bib) {
-        (_, Ok(bib)) => {
-            if let Some(entry) = select_from_resolved(bib, confirm)? {
-                entry
-            } else {
-                return Ok(None);
-            }
-        },
-        (true, Err(_)) => return Err(eyre!("Some entries found do not have the required fields and with the --confirm flag set cannot be resolved by the user")),
-        (_, Err(builder)) => select_and_resolve_builder(builder)?,
-    };
-
-    if let Some(cite) = cite {
-        info!("Overriding cite key value with '{cite}'");
-        entry.set_cite(cite);
-    }
-
-    Ok(Some(entry))
+#[inline]
+pub fn take_first_resolvable(bib: Result<Biblio, BiblioBuilder>) -> Result<Entry, EntryBuilder> {
+    bib.map(|bib| bib.into_entries().remove(0))
+        .or_else(|mut b| b.checked_remove(0).expect("BiblioBuilder was empty!"))
 }
 
-fn select_from_resolved(bib: Biblio, confirm: bool) -> eyre::Result<Option<Entry>> {
-    let mut entries = bib.into_entries();
-    if confirm {
-        if entries.is_empty() {
-            Ok(None)
-        } else {
-            info!("--confirm used - picking the first entry found..");
-            Ok(Some(entries.remove(0)))
-        }
-    } else {
-        user_select_entry(entries).map(Some)
+pub fn user_select_resolvable(
+    bib: Result<Biblio, BiblioBuilder>,
+) -> eyre::Result<Result<Entry, EntryBuilder>> {
+    match bib {
+        Ok(bib) => user_select_entry(bib.into_entries()).map(Ok),
+        Err(builder) => select_from_builder(builder),
     }
 }
 
@@ -57,22 +32,18 @@ fn select_from_builder(mut builder: BiblioBuilder) -> eyre::Result<Result<Entry,
     })
 }
 
-fn select_and_resolve_builder(builder: BiblioBuilder) -> eyre::Result<Entry> {
-    #[inline]
-    fn resolve_entry_builder(entry_builder: EntryBuilder) -> eyre::Result<Entry> {
-        let mut res = Err(entry_builder);
-        loop {
-            match res {
-                Ok(entry) => return Ok(entry),
-                Err(mut entry_builder) => {
-                    user_resolve_entry(&mut entry_builder)?;
-                    res = entry_builder.build();
-                }
+#[inline]
+pub fn resolve_entry_builder(entry_builder: EntryBuilder) -> eyre::Result<Entry> {
+    let mut res = Err(entry_builder);
+    loop {
+        match res {
+            Ok(entry) => return Ok(entry),
+            Err(mut entry_builder) => {
+                user_resolve_entry(&mut entry_builder)?;
+                res = entry_builder.build();
             }
         }
     }
-
-    select_from_builder(builder)?.or_else(resolve_entry_builder)
 }
 
 pub fn check_entry_field_duplication(bib: &Biblio, name: &str, value: &str) -> eyre::Result<()> {
