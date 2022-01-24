@@ -50,7 +50,7 @@ $ seb add doi "10.1007/s00453-019-00634-0"
 }
 ```
 
-## `seb add ietf`
+### `seb add ietf`
 
 Search a bibliographic entry by its [IETF RFC Number](https://www.ietf.org/standards/rfcs/)
 and add it to the current bibliography.
