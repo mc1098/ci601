@@ -1,6 +1,6 @@
 use dialoguer::Input;
 use eyre::{eyre, Context, Result};
-use seb::ast::{Biblio, BiblioBuilder, Builder, Entry, FieldQuery, QuotedString};
+use seb::ast::{Biblio, BiblioBuilder, Builder as EntryBuilder, Entry, FieldQuery, QuotedString};
 
 pub fn user_select<S: ToString>(prompt: &str, items: &[S]) -> Result<usize> {
     let selection = dialoguer::Select::with_theme(&dialoguer::theme::ColorfulTheme::default())
@@ -55,7 +55,7 @@ pub fn user_resolve_biblio_builder(builder: BiblioBuilder) -> eyre::Result<Bibli
     }
 }
 
-pub fn user_resolve_entry(builder: &mut Builder) -> eyre::Result<()> {
+pub fn user_resolve_entry(builder: &mut EntryBuilder) -> eyre::Result<()> {
     let title = builder
         .get_field("title")
         .map_or_else(|| "No title".to_owned(), |qs| qs.to_string());
