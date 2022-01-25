@@ -4,7 +4,25 @@ use crate::{
     format::BibTex,
 };
 
-pub(crate) fn get_entry_by_rfc(number: usize) -> eyre::Result<Result<Biblio, BiblioBuilder>> {
-    let url = format!("https://datatracker.ietf.org/doc/rfc{number}/bibtex/");
-    format_api::get_entry_by_url::<BibTex>(&url)
+use super::{Client, Error};
+
+macro_rules! ietf_url {
+    ($number: ident) => {
+        format!("https://datatracker.ietf.org/doc/rfc{}/bibtex/", $number)
+    };
+}
+
+pub(crate) fn get_entry_by_rfc<C: Client>(
+    number: usize,
+) -> Result<Result<Biblio, BiblioBuilder>, Error> {
+    format_api::get_entry_by_url::<C, BibTex>(&ietf_url!(number))
+}
+
+#[test]
+fn ietf_url_macro_adds_number_in_place() {
+    let number = 7230;
+    assert_eq!(
+        "https://datatracker.ietf.org/doc/rfc7230/bibtex/",
+        ietf_url!(number)
+    );
 }

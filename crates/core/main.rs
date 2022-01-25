@@ -16,7 +16,7 @@ mod interact;
 
 use app::resolve_entry_builder;
 use clap::{AppSettings, Parser, Subcommand};
-use eyre::eyre;
+use eyre::{eyre, Context};
 use interact::user_resolve_biblio_builder;
 use log::{info, trace};
 use seb::{
@@ -220,21 +220,21 @@ impl AddCommands {
                 trace!("Checking current bibliography for possible duplicate doi..");
                 app::check_entry_field_duplication(biblio, "doi", doi)?;
                 trace!("No duplicate found!");
-                seb::entries_by_doi(doi)
+                seb::entries_by_doi(doi).wrap_err_with(|| eyre!("Cannot find the entry"))
             }
             AddCommands::Ietf { rfc_number, .. } => {
                 dbg!("ietf subcommand called with value of '{}", &rfc_number);
                 trace!("Checking current bibliography for possible duplicate RFC number..");
                 app::check_entry_field_duplication(biblio, "number", &rfc_number.to_string())?;
                 trace!("No duplicate found!");
-                seb::entries_by_rfc(*rfc_number)
+                seb::entries_by_rfc(*rfc_number).wrap_err_with(|| eyre!("Cannot find the entry"))
             }
             AddCommands::Isbn { isbn, .. } => {
                 dbg!("isbn subcommand called with value of '{}", &isbn);
                 trace!("Checking current bibliography for possible duplicate ISBN.");
                 app::check_entry_field_duplication(biblio, "isbn", isbn)?;
                 trace!("No duplicate found!");
-                seb::entries_by_isbn(isbn)
+                seb::entries_by_isbn(isbn).wrap_err_with(|| eyre!("Cannot find the entry"))
             }
         }
     }

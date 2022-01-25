@@ -15,8 +15,13 @@ impl Format for BibTex {
     }
 
     fn parse(self) -> Result<std::result::Result<Biblio, BiblioBuilder>> {
-        let biblio =
-            Bibliography::parse(&self.0).ok_or_else(|| eyre!("Cannot parse the BibTex"))?;
+        let biblio = if self.0.is_empty() {
+            Bibliography::new()
+        } else {
+            Bibliography::parse(&self.0)
+                .filter(|b| b.len() != 0)
+                .ok_or_else(|| eyre!("Cannot parse the BibTeX"))?
+        };
         let entries = biblio.into_iter().map(ast::Builder::from).collect();
         Ok(Biblio::try_build(entries))
     }

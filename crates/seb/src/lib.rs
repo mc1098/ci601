@@ -20,10 +20,13 @@ pub mod ast;
 pub mod format;
 pub mod parse;
 
+pub use api::Error;
 use ast::{Biblio, BiblioBuilder};
 
 use format::Format;
 use log::trace;
+
+type Client = reqwest::blocking::Client;
 
 /// Search bibliographic entries by `doi` using the default API.
 ///
@@ -35,9 +38,9 @@ use log::trace;
 /// An [`Err`] is returned when no entry is found for the `doi`.
 /// An [`Err`] is returned when the response from the API cannot be parsed into a valid [`Entry`].
 #[inline]
-pub fn entries_by_doi(doi: &str) -> eyre::Result<Result<Biblio, BiblioBuilder>> {
-    trace!("Search entries by doi of '{}'", doi);
-    api::cross_ref::get_entries_by_doi(doi)
+pub fn entries_by_doi(doi: &str) -> Result<Result<Biblio, BiblioBuilder>, Error> {
+    trace!("Search entries by doi of '{doi}'");
+    api::cross_ref::get_entries_by_doi::<Client>(doi)
 }
 
 /// Search bibliographic entries by `isbn` using the default API.
@@ -50,9 +53,9 @@ pub fn entries_by_doi(doi: &str) -> eyre::Result<Result<Biblio, BiblioBuilder>> 
 /// An [`Err`] is returned when no entry is found for the `isbn`.
 /// An [`Err`] is returned when the response from the API cannot be parsed into a valid [`Entry`].
 #[inline]
-pub fn entries_by_isbn(isbn: &str) -> eyre::Result<Result<Biblio, BiblioBuilder>> {
-    trace!("Search entries by ISBN of '{}'", isbn);
-    api::google_books::get_entries_by_isbn(isbn)
+pub fn entries_by_isbn(isbn: &str) -> Result<Result<Biblio, BiblioBuilder>, Error> {
+    trace!("Search entries by ISBN of '{isbn}'");
+    api::google_books::get_entries_by_isbn::<Client>(isbn)
 }
 
 /// Search bibliographic entries by `IETF RFC number`.
@@ -66,9 +69,9 @@ pub fn entries_by_isbn(isbn: &str) -> eyre::Result<Result<Biblio, BiblioBuilder>
 /// An [`Err`] is returned when an error occurs trying to retrive the textual data from the url.
 /// An [`Err`] is returned when the response from the API cannot be parsed into a valid [`Entry`].
 #[inline]
-pub fn entries_by_rfc(number: usize) -> eyre::Result<Result<Biblio, BiblioBuilder>> {
+pub fn entries_by_rfc(number: usize) -> Result<Result<Biblio, BiblioBuilder>, Error> {
     trace!("Search entries by IETF RFC number '{number}'");
-    api::ietf::get_entry_by_rfc(number)
+    api::ietf::get_entry_by_rfc::<Client>(number)
 }
 
 /// Search bibliographic entries at a given `url` when the expected text format matches the `F:
@@ -80,7 +83,7 @@ pub fn entries_by_rfc(number: usize) -> eyre::Result<Result<Biblio, BiblioBuilde
 /// An [`Err`] is returned when an error occurs trying to retrive the textual data from the url.
 /// An [`Err`] is returned when the response from the API cannot be parsed into a valid [`Entry`].
 #[inline]
-pub fn entries_by_url<F: Format>(url: &str) -> eyre::Result<Result<Biblio, BiblioBuilder>> {
-    trace!("Search entries at url of '{}'", url);
-    api::format_api::get_entry_by_url::<F>(url)
+pub fn entries_by_url<F: Format>(url: &str) -> Result<Result<Biblio, BiblioBuilder>, Error> {
+    trace!("Search entries at url of '{url}'");
+    api::format_api::get_entry_by_url::<Client, F>(url)
 }
