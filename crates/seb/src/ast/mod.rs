@@ -197,10 +197,16 @@ impl Biblio {
     }
 
     /// Remove the cite key and return the [`Entry`] value if they cite was found.
-    pub fn remove(&mut self, cite: &str) -> Option<Entry> {
-        let entry = self.entries.remove(cite);
-        self.dirty |= entry.is_some();
-        entry
+    pub fn remove(&mut self, cite: &str) -> bool {
+        let mut removed = false;
+        self.entries.retain(|k, _| {
+            let check = k.to_lowercase() != cite.to_lowercase();
+            removed |= !check;
+            check
+        });
+
+        self.dirty |= removed;
+        removed
     }
 
     /// Return a reference to a slice of entries.
