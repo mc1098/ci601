@@ -1,38 +1,33 @@
-use eyre::{eyre, Context, Result};
+use eyre::eyre;
 use log::{info, trace};
 use serde::Deserialize;
 
 use crate::ast::{self, Biblio, BiblioBuilder, Entry};
 
+use super::{Client, Error};
+
 const GOOGLE_BOOKS_URL: &str = "https://www.googleapis.com/books/v1/volumes?q=isbn:";
 
-pub(crate) fn get_entries_by_isbn(
+pub(crate) fn get_entries_by_isbn<C: Client>(
     isbn: &str,
-) -> Result<std::result::Result<Biblio, BiblioBuilder>> {
-    get_book_info(isbn)
+) -> Result<std::result::Result<Biblio, BiblioBuilder>, Error> {
+    get_book_info::<C>(isbn)
         .and_then(Entry::try_from)
         .map(|e| vec![e])
         .map(|entries| Ok(Biblio::new(entries)))
 }
 
-pub(crate) fn get_book_info(isbn: &str) -> Result<Book> {
+pub(crate) fn get_book_info<C: Client>(isbn: &str) -> Result<Book, Error> {
     info!("Searching for ISBN '{}' using Google Books API", isbn);
     let mut url = GOOGLE_BOOKS_URL.to_owned();
     url.push_str(isbn);
 
-    let client = reqwest::blocking::Client::default();
-    let GoogleModel { mut items } = client
-        .get(&url)
-        .send()
-        .and_then(reqwest::blocking::Response::json)
-        .wrap_err_with(|| eyre!("Cannot create valid reference for this ISBN"))?;
+    let client = C::default();
+    let GoogleModel { mut items } = client.get_json(&url)?;
 
     trace!("Request was successful");
 
-    let builder = items
-        .drain(..)
-        .next()
-        .ok_or_else(|| eyre!("No Books found for ISBN of '{isbn}'"))?;
+    let builder = items.drain(..).next().ok_or(Error::NoValue)?;
 
     Ok(builder.build(isbn.to_owned()))
 }
@@ -81,9 +76,9 @@ impl Item {
 }
 
 impl TryFrom<Book> for Entry {
-    type Error = eyre::Report;
+    type Error = Error;
 
-    fn try_from(book: Book) -> Result<Self> {
+    fn try_from(book: Book) -> Result<Self, Error> {
         // Deconstruct book to take ownership of fields (avoids cloning).
         let Book {
             isbn,
@@ -104,7 +99,9 @@ impl TryFrom<Book> for Entry {
                 s.retain(|c| !c.is_whitespace());
                 s
             })
-            .ok_or_else(|| eyre!("Not authors found from resource response"))?;
+            .ok_or_else(|| {
+                Error::Deserialize(eyre!("Not authors found from resource response").into())
+            })?;
         cite.push_str(&year);
 
         let title = ast::QuotedString::new(title);
@@ -122,6 +119,23 @@ impl TryFrom<Book> for Entry {
         };
 
         Ok(Self::Book(data))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::api::{impl_text_producer, MockJsonClient};
+
+    impl_text_producer! {
+        ValidJsonProducer => Ok(include_str!("../../../../tests/data/google_book_json.txt").to_owned()),
+    }
+
+    #[test]
+    fn valid_json_produces_resolved_biblio() {
+        let res = super::get_entries_by_isbn::<MockJsonClient<ValidJsonProducer>>("test")
+            .expect("ValidJsonProducer always produces a valid json String to be deserialized");
+
+        res.expect("Should produce a resolved Biblio");
     }
 }
 
