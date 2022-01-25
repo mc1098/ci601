@@ -262,7 +262,7 @@ impl Commands {
             Commands::Rm { cite } => {
                 dbg!("rm subcommand called with the value of '{cite}'");
                 trace!("Checking current bibliography for entry with this cite key..");
-                if biblio.remove(&cite).is_some() {
+                if biblio.remove(&cite) {
                     Ok("Entry removed from bibliography".to_owned())
                 } else {
                     Ok(format!("No entry found with the cite key of '{cite}'"))
