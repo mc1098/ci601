@@ -2,7 +2,7 @@ use eyre::eyre;
 use log::{info, trace};
 use serde::Deserialize;
 
-use crate::ast::{self, Biblio, BiblioBuilder, Entry};
+use crate::ast::{self, Biblio, BiblioResolver, Entry};
 
 use super::{Client, Error};
 
@@ -10,7 +10,7 @@ const GOOGLE_BOOKS_URL: &str = "https://www.googleapis.com/books/v1/volumes?q=is
 
 pub(crate) fn get_entries_by_isbn<C: Client>(
     isbn: &str,
-) -> Result<std::result::Result<Biblio, BiblioBuilder>, Error> {
+) -> Result<std::result::Result<Biblio, BiblioResolver>, Error> {
     get_book_info::<C>(isbn)
         .and_then(Entry::try_from)
         .map(|e| vec![e])
@@ -27,9 +27,9 @@ pub(crate) fn get_book_info<C: Client>(isbn: &str) -> Result<Book, Error> {
 
     trace!("Request was successful");
 
-    let builder = items.drain(..).next().ok_or(Error::NoValue)?;
+    let resolver = items.drain(..).next().ok_or(Error::NoValue)?;
 
-    Ok(builder.build(isbn.to_owned()))
+    Ok(resolver.build(isbn.to_owned()))
 }
 
 #[derive(Deserialize)]
@@ -39,7 +39,7 @@ struct GoogleModel {
 }
 
 /// The API does not include the ISBN.. so this struct also acts as
-/// a builder for the [`Book`] type, see [`VolumeInfo::build`].
+/// a resolver for the [`Book`] type, see [`VolumeInfo::build`].
 #[derive(Deserialize)]
 #[cfg_attr(test, derive(Debug))]
 struct Item {
@@ -65,7 +65,7 @@ struct VolumeInfo {
 }
 
 impl Item {
-    // We use a builder pattern here to enforce a valid [`Book`] is always returned.
+    // We use a resolver pattern here to enforce a valid [`Book`] is always returned.
     #[allow(clippy::missing_const_for_fn)] // can't be const
     fn build(self, isbn: String) -> Book {
         Book {
