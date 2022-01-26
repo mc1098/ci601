@@ -1,6 +1,6 @@
 use crate::{
     api::format_api,
-    ast::{Biblio, BiblioBuilder},
+    ast::{Biblio, BiblioResolver},
     format::BibTex,
 };
 
@@ -18,7 +18,7 @@ macro_rules! crossref_url {
 #[inline]
 pub(crate) fn get_entries_by_doi<C: Client>(
     doi: &str,
-) -> Result<Result<Biblio, BiblioBuilder>, Error> {
+) -> Result<Result<Biblio, BiblioResolver>, Error> {
     format_api::get_entry_by_url::<C, BibTex>(&crossref_url!(doi))
 }
 

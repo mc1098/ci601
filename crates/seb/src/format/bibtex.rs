@@ -1,4 +1,4 @@
-use crate::ast::{self, Biblio, BiblioBuilder, QuotedString};
+use crate::ast::{self, Biblio, BiblioResolver, QuotedString};
 
 use super::Format;
 
@@ -14,7 +14,7 @@ impl Format for BibTex {
         Self(val)
     }
 
-    fn parse(self) -> Result<std::result::Result<Biblio, BiblioBuilder>> {
+    fn parse(self) -> Result<std::result::Result<Biblio, BiblioResolver>> {
         let biblio = if self.0.is_empty() {
             Bibliography::new()
         } else {
@@ -22,8 +22,8 @@ impl Format for BibTex {
                 .filter(|b| b.len() != 0)
                 .ok_or_else(|| eyre!("Cannot parse the BibTeX"))?
         };
-        let entries = biblio.into_iter().map(ast::Builder::from).collect();
-        Ok(Biblio::try_build(entries))
+        let entries = biblio.into_iter().map(ast::Resolver::from).collect();
+        Ok(Biblio::try_resolve(entries))
     }
 
     fn compose(ast: Biblio) -> Self {
@@ -89,7 +89,7 @@ fn compose_fields(fields: &[ast::Field]) -> String {
         .collect()
 }
 
-impl From<biblatex::Entry> for ast::Builder {
+impl From<biblatex::Entry> for ast::Resolver {
     fn from(entry: biblatex::Entry) -> Self {
         // Deconstruct to avoid cloning
         let biblatex::Entry {
@@ -98,26 +98,26 @@ impl From<biblatex::Entry> for ast::Builder {
             mut fields,
         } = entry;
 
-        let mut builder = match entry_type {
-            biblatex::EntryType::Article => ast::Article::builder_with_cite(cite),
-            biblatex::EntryType::Book => ast::Book::builder_with_cite(cite),
-            biblatex::EntryType::Booklet => ast::Booklet::builder_with_cite(cite),
-            biblatex::EntryType::InCollection => ast::BookSection::builder_with_cite(cite),
-            biblatex::EntryType::InProceedings => ast::InProceedings::builder_with_cite(cite),
-            biblatex::EntryType::Manual => ast::Manual::builder_with_cite(cite),
-            biblatex::EntryType::MastersThesis => ast::MasterThesis::builder_with_cite(cite),
-            biblatex::EntryType::PhdThesis => ast::PhdThesis::builder_with_cite(cite),
+        let mut resolver = match entry_type {
+            biblatex::EntryType::Article => ast::Article::resolver_with_cite(cite),
+            biblatex::EntryType::Book => ast::Book::resolver_with_cite(cite),
+            biblatex::EntryType::Booklet => ast::Booklet::resolver_with_cite(cite),
+            biblatex::EntryType::InCollection => ast::BookSection::resolver_with_cite(cite),
+            biblatex::EntryType::InProceedings => ast::InProceedings::resolver_with_cite(cite),
+            biblatex::EntryType::Manual => ast::Manual::resolver_with_cite(cite),
+            biblatex::EntryType::MastersThesis => ast::MasterThesis::resolver_with_cite(cite),
+            biblatex::EntryType::PhdThesis => ast::PhdThesis::resolver_with_cite(cite),
             biblatex::EntryType::TechReport | biblatex::EntryType::Report => {
-                ast::TechReport::builder_with_cite(cite)
+                ast::TechReport::resolver_with_cite(cite)
             }
-            _ => ast::Other::builder_with_cite(cite),
+            _ => ast::Other::resolver_with_cite(cite),
         };
 
         for (name, value) in fields.drain() {
-            builder.set_field(&name, value.into());
+            resolver.set_field(&name, value.into());
         }
 
-        builder
+        resolver
     }
 }
 

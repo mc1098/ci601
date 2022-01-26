@@ -14,13 +14,13 @@ mod app;
 mod file;
 mod interact;
 
-use app::resolve_entry_builder;
+use app::resolve_entry_resolver;
 use clap::{AppSettings, Parser, Subcommand};
 use eyre::{eyre, Context};
-use interact::user_resolve_biblio_builder;
+use interact::user_resolve_biblio_resolver;
 use log::{info, trace};
 use seb::{
-    ast::{Biblio, BiblioBuilder, Entry},
+    ast::{Biblio, BiblioResolver, Entry},
     format::{BibTex, Reader, Writer},
 };
 
@@ -56,7 +56,7 @@ fn try_main() -> Result<(), Box<dyn error::Error>> {
 
     let mut biblio = match biblio {
         Ok(biblio) => biblio,
-        Err(builder) if interact => user_resolve_biblio_builder(builder)?,
+        Err(resolver) if interact => user_resolve_biblio_resolver(resolver)?,
         Err(_) => {
             return Err(
                 eyre!("Some entries in the bibliography are missing required fields").into(),
@@ -191,7 +191,7 @@ impl AddCommands {
 
     fn interact_execute(self, biblio: &mut Biblio) -> eyre::Result<Entry> {
         let bib = self.search_entries(biblio)?;
-        let mut entry = user_select_resolvable(bib)?.or_else(resolve_entry_builder)?;
+        let mut entry = user_select_resolvable(bib)?.or_else(resolve_entry_resolver)?;
         self.set_cite(&mut entry);
         Ok(entry)
     }
@@ -213,7 +213,7 @@ impl AddCommands {
         })
     }
 
-    fn search_entries(&self, biblio: &Biblio) -> eyre::Result<Result<Biblio, BiblioBuilder>> {
+    fn search_entries(&self, biblio: &Biblio) -> eyre::Result<Result<Biblio, BiblioResolver>> {
         match self {
             AddCommands::Doi { doi, .. } => {
                 dbg!("doi subcommand called with value of '{}", &doi);

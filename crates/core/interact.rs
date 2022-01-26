@@ -1,6 +1,8 @@
 use dialoguer::Input;
 use eyre::{eyre, Context, Result};
-use seb::ast::{Biblio, BiblioBuilder, Builder as EntryBuilder, Entry, FieldQuery, QuotedString};
+use seb::ast::{
+    Biblio, BiblioResolver, Entry, FieldQuery, QuotedString, Resolver as EntryResolver,
+};
 
 pub fn user_select<S: ToString>(prompt: &str, items: &[S]) -> Result<usize> {
     let selection = dialoguer::Select::with_theme(&dialoguer::theme::ColorfulTheme::default())
@@ -33,39 +35,39 @@ pub fn user_input(prompt: String) -> Result<String> {
         .wrap_err_with(|| eyre!("User input cancelled"))
 }
 
-pub fn user_resolve_biblio_builder(builder: BiblioBuilder) -> eyre::Result<Biblio> {
-    let mut res = Err(builder);
+pub fn user_resolve_biblio_resolver(resolver: BiblioResolver) -> eyre::Result<Biblio> {
+    let mut res = Err(resolver);
 
-    // BiblioBuilder::unresolved only returns unresolved entry builders and when this returns no
-    // builders than BiblioBuilder::build is guaranteed to be successful. This loop relies on this
+    // BiblioResolver::unresolved only returns unresolved entry resolvers and when this returns no
+    // resolvers than BiblioResolver::resolve is guaranteed to be successful. This loop relies on this
     // behaviour in order to prevent an infinite loop occurring.
     //
-    // A single iteration of this loop should resolve the BiblioBuilder and the second iteration
+    // A single iteration of this loop should resolve the BiblioResolver and the second iteration
     // will match the `Ok` arm and return the resolved Biblio.
     loop {
         match res {
             Ok(bib) => return Ok(bib),
-            Err(mut builder) => {
-                for entry_builder in builder.unresolved() {
-                    user_resolve_entry(entry_builder)?;
+            Err(mut resolver) => {
+                for entry_resolver in resolver.unresolved() {
+                    user_resolve_entry(entry_resolver)?;
                 }
-                res = builder.build();
+                res = resolver.resolve();
             }
         }
     }
 }
 
-pub fn user_resolve_entry(builder: &mut EntryBuilder) -> eyre::Result<()> {
-    let title = builder
+pub fn user_resolve_entry(resolver: &mut EntryResolver) -> eyre::Result<()> {
+    let title = resolver
         .get_field("title")
         .map_or_else(|| "No title".to_owned(), |qs| qs.to_string());
     println!("Missing required fields for entry: {title}");
 
-    let fields: Vec<_> = builder.required_fields().cloned().collect();
+    let fields: Vec<_> = resolver.required_fields().cloned().collect();
 
     for field in fields {
         let input = user_input(format!("Enter value for the {field} field"))?;
-        builder.set_field(&field, QuotedString::new(input));
+        resolver.set_field(&field, QuotedString::new(input));
     }
     Ok(())
 }

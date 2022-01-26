@@ -5,7 +5,7 @@ use std::marker::PhantomData;
 
 mod bibtex;
 
-use crate::ast::{Biblio, BiblioBuilder};
+use crate::ast::{Biblio, BiblioResolver};
 pub use bibtex::BibTex;
 
 // TODO: Consider defining Format so that it can wrap T types, where T: std::io::Write +
@@ -27,7 +27,7 @@ pub trait Format {
     /// # Errors
     ///
     /// Will return [`Err`] if it's not possible to parse this [`Format`] to [`Biblio`].
-    fn parse(self) -> eyre::Result<std::result::Result<Biblio, BiblioBuilder>>;
+    fn parse(self) -> eyre::Result<Result<Biblio, BiblioResolver>>;
 
     /// Composes a [`Biblio`] to this [`Format`].
     ///
@@ -109,7 +109,7 @@ pub trait Reader {
     /// # Errors
     /// This will return [`Err`] if there is an error from [`Reader::read`] or an error when parsing
     /// using [`Format::parse`].
-    fn read_ast(&mut self) -> eyre::Result<std::result::Result<Biblio, BiblioBuilder>> {
+    fn read_ast(&mut self) -> eyre::Result<Result<Biblio, BiblioResolver>> {
         let format = self.read()?;
         format.parse()
     }

@@ -7,30 +7,30 @@ use std::{borrow::Cow, collections::HashMap, marker::PhantomData};
 pub use entry::*;
 pub use quoted_string::{EscapePattern, QuotedString};
 
-/// A [`Biblio`] builder used for managing a set of entry builders until they all succeed in order
+/// A [`Biblio`] resolver used for managing a set of entry resolvers until they all succeed in order
 /// to make a [`Biblio`] with valid entries in.
 #[derive(Debug)]
-pub struct BiblioBuilder {
+pub struct BiblioResolver {
     failed: bool,
-    builders: Vec<Builder>,
+    resolvers: Vec<Resolver>,
     entries: Vec<Entry>,
 }
 
-impl BiblioBuilder {
-    /// Attempts to build all of the entry builders and returns the [`Biblio`] if all of them
+impl BiblioResolver {
+    /// Attempts to resolve all of the entry resolvers and returns the [`Biblio`] if all of them
     /// succeed.
     ///
     /// # Errors
     ///
-    /// Returns [`Err(Self)`] if one of the entry builders fail, this allows for resolving the
-    /// entry builders that failed and then retrying the build.
-    pub fn build(mut self) -> Result<Biblio, Self> {
-        let (built, builders): (Vec<_>, Vec<_>) =
-            try_partition(self.builders.into_iter().map(Builder::build));
+    /// Returns [`Err(Self)`] if one of the entry resolvers fail, this allows for resolving the
+    /// entry resolvers that failed and then retrying the resolve.
+    pub fn resolve(mut self) -> Result<Biblio, Self> {
+        let (built, resolvers): (Vec<_>, Vec<_>) =
+            try_partition(self.resolvers.into_iter().map(Resolver::resolve));
 
         self.entries.extend(built);
 
-        if builders.is_empty() {
+        if resolvers.is_empty() {
             Ok(Biblio {
                 dirty: self.failed,
                 entries: self
@@ -40,37 +40,37 @@ impl BiblioBuilder {
                     .collect(),
             })
         } else {
-            self.builders = builders;
+            self.resolvers = resolvers;
             self.failed = true;
             Err(self)
         }
     }
 
-    /// Returns the builders that failed to build so that missing fields can be set before trying
-    /// to call [`BiblioBuilder::build`] again.
-    pub fn unresolved(&mut self) -> impl Iterator<Item = &mut Builder> {
-        self.builders.iter_mut()
+    /// Returns the resolvers that failed to resolve so that missing fields can be set before trying
+    /// to call [`BiblioResolver::resolve`] again.
+    pub fn unresolved(&mut self) -> impl Iterator<Item = &mut Resolver> {
+        self.resolvers.iter_mut()
     }
 
-    /// Removes either the entry or builder based on the index.
+    /// Removes either the entry or resolver based on the index.
     ///
-    /// The [`BiblioBuilder`] can contain both resolvd entries or builders and does so in this
+    /// The [`BiblioResolver`] can contain both resolvd entries or resolvers and does so in this
     /// order, therefore the index can be used to retrieve either.
     ///
-    /// The index should be found using the [`BiblioBuilder::map_iter_all`] iterator as this
+    /// The index should be found using the [`BiblioResolver::map_iter_all`] iterator as this
     /// iterator is in the same order.
-    pub fn checked_remove(&mut self, index: usize) -> Option<Result<Entry, Builder>> {
+    pub fn checked_remove(&mut self, index: usize) -> Option<Result<Entry, Resolver>> {
         if index < self.entries.len() {
             Some(Ok(self.entries.remove(index)))
-        } else if index - self.entries.len() < self.builders.len() {
-            Some(Err(self.builders.remove(index - self.entries.len())))
+        } else if index - self.entries.len() < self.resolvers.len() {
+            Some(Err(self.resolvers.remove(index - self.entries.len())))
         } else {
             None
         }
     }
 
     /// Returns an iterator of the result of the closure which is applied over both the resolve
-    /// entries and unresolved builders.
+    /// entries and unresolved resolvers.
     pub fn map_iter_all<F, T>(&self, f: F) -> MapIter<'_, F, T>
     where
         F: Fn(&dyn FieldQuery) -> T,
@@ -79,22 +79,22 @@ impl BiblioBuilder {
     }
 }
 
-/// Iterator of the resolved and unresolved entries a [`BiblioBuilder`] based on the result of a
+/// Iterator of the resolved and unresolved entries a [`BiblioResolver`] based on the result of a
 /// closure given.
-pub struct MapIter<'builder, F, T> {
-    builder: &'builder BiblioBuilder,
+pub struct MapIter<'resolver, F, T> {
+    resolver: &'resolver BiblioResolver,
     index: usize,
     f: F,
     _item: PhantomData<T>,
 }
 
-impl<'builder, F, T> MapIter<'builder, F, T>
+impl<'resolver, F, T> MapIter<'resolver, F, T>
 where
     F: Fn(&dyn FieldQuery) -> T,
 {
-    fn new(builder: &'builder BiblioBuilder, f: F) -> Self {
+    fn new(resolver: &'resolver BiblioResolver, f: F) -> Self {
         Self {
-            builder,
+            resolver,
             f,
             index: 0,
             _item: PhantomData,
@@ -109,19 +109,22 @@ where
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let entries_size = self.builder.entries.len();
+        let entries_size = self.resolver.entries.len();
 
         if self.index < entries_size {
             let index = self.index;
             self.index += 1;
-            self.builder.entries.get(index).map(|entry| (self.f)(entry))
+            self.resolver
+                .entries
+                .get(index)
+                .map(|entry| (self.f)(entry))
         } else {
             let index = self.index - entries_size;
             self.index += 1;
-            self.builder
-                .builders
+            self.resolver
+                .resolvers
                 .get(index)
-                .map(|builder| (self.f)(builder))
+                .map(|resolver| (self.f)(resolver))
         }
     }
 }
@@ -163,20 +166,20 @@ impl Biblio {
         }
     }
 
-    /// Attempts to build all of the entry builders and if they all succeed then returns a
+    /// Attempts to resolve all of the entry resolvers and if they all succeed then returns a
     /// [`Biblio`].
     ///
     /// # Errors
     ///
-    /// Returns [`Err(BiblioBuilder)`] if one of the entry builders fail, this allows resolving
-    /// the builders and retrying the build.
-    pub fn try_build(builders: Vec<Builder>) -> Result<Self, BiblioBuilder> {
-        BiblioBuilder {
+    /// Returns [`Err(BiblioResolver)`] if one of the entry resolvers fail, this allows resolving
+    /// the resolvers and retrying the resolve.
+    pub fn try_resolve(resolvers: Vec<Resolver>) -> Result<Self, BiblioResolver> {
+        BiblioResolver {
             failed: false,
-            builders,
+            resolvers,
             entries: Vec::new(),
         }
-        .build()
+        .resolve()
     }
 
     /// Checks and resets the `dirty` flag.

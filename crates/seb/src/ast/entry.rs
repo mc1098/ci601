@@ -162,30 +162,30 @@ macro_rules! entry_impl {
                         }
                     }
 
-                    /// Creates a new [`Builder`] for this type to ensure that the required fields
+                    /// Creates a new [`Resolver`] for this type to ensure that the required fields
                     /// are set before the entry type can be built.
                     ///
-                    /// Does not set the cite value of the builder so will be generated based on
+                    /// Does not set the cite value of the resolver so will be generated based on
                     /// the field values.
                     #[must_use]
-                    pub fn builder() -> Builder {
-                        Builder {
+                    pub fn resolver() -> Resolver {
+                        Resolver {
                             cite: None,
                             req: [$(Cow::Borrowed(stringify!($req)),)+].into_iter().collect(),
                             fields: HashMap::new(),
-                            entry_build: build,
+                            entry_resolve: resolve,
                         }
                     }
 
-                    /// Creates a new [`Builder`] for this type to ensure that the required fields
+                    /// Creates a new [`Resolver`] for this type to ensure that the required fields
                     /// are set before the entry type can be built.
                     #[must_use]
-                    pub fn builder_with_cite<S: Into<String>>(cite: S) -> Builder {
-                        Builder {
+                    pub fn resolver_with_cite<S: Into<String>>(cite: S) -> Resolver {
+                        Resolver {
                             cite: Some(cite.into()),
                             req: [$(Cow::Borrowed(stringify!($req)),)+].into_iter().collect(),
                             fields: HashMap::new(),
-                            entry_build: build,
+                            entry_resolve: resolve,
                         }
                     }
                 }
@@ -200,37 +200,37 @@ macro_rules! entry_impl {
                     }
                 }
 
-                fn build(mut builder: Builder) -> Entry {
-                    let cite = builder.cite().to_string();
+                fn resolve(mut resolver: Resolver) -> Entry {
+                    let cite = resolver.cite().to_string();
 
                     let data = $target {
                         cite,
-                        $($req: builder.fields.remove(stringify!($req)).unwrap(),)+
-                        optional: builder.fields,
+                        $($req: resolver.fields.remove(stringify!($req)).unwrap(),)+
+                        optional: resolver.fields,
                     };
 
                     Entry::$target(data)
                 }
 
                 #[test]
-                fn builder_only_returns_ok_when_all_required_fields_set() {
+                fn resolver_only_returns_ok_when_all_required_fields_set() {
                     use std::collections::VecDeque;
 
-                    let mut builder = $target::builder();
+                    let mut resolver = $target::resolver();
                     let mut required: VecDeque<_> = [$(stringify!($req),)+].into_iter().collect();
 
                     let iter = std::iter::from_fn(move || required.pop_front());
                     let iter = iter.zip(('a'..).into_iter());
 
                     for (field, c) in iter {
-                        builder = builder
-                            .build()
-                            .expect_err("Builder should not build correctly without required fields");
+                        resolver = resolver
+                            .resolve()
+                            .expect_err("Resolver should not resolve correctly without required fields");
 
-                        builder.set_field(field, QuotedString::new(c.to_string()));
+                        resolver.set_field(field, QuotedString::new(c.to_string()));
                     }
-                    builder.set_field("test", QuotedString::new("value".to_owned()));
-                    let res = builder.build();
+                    resolver.set_field("test", QuotedString::new("value".to_owned()));
+                    let res = resolver.resolve();
                     let entry = res.expect("All required fields added so should have built correctly");
 
                     let mut alpha = ('a'..).into_iter().map(|c| c.to_string());
@@ -404,42 +404,42 @@ entry_impl! {
         ),
 }
 
-/// A general `Entry` builder that allows for retrying builds of entries multiple times at runtime.
+/// A general `Entry` resolver that allows for retrying resolves of entries multiple times at runtime.
 ///
-/// Each entry type, like `Book`, has an associated `builder` function in order to create the
-/// correct builder for that type.
+/// Each entry type, like `Book`, has an associated `resolver` function in order to create the
+/// correct resolver for that type.
 ///
 /// # Examples
 ///
 /// ```
-/// use seb::ast::{Builder, Manual, QuotedString};
+/// use seb::ast::{Resolver, Manual, QuotedString};
 ///
-/// let builder = Manual::builder_with_cite("cite_key".to_owned());
+/// let resolver = Manual::resolver_with_cite("cite_key".to_owned());
 ///
 /// // manual only requires the `title` field to be valid
-/// assert_eq!(&["title"][..], builder.required_fields().collect::<Vec<_>>());
+/// assert_eq!(&["title"][..], resolver.required_fields().collect::<Vec<_>>());
 ///
-/// let mut builder = builder.build().expect_err("The required title field is not set");
-/// builder.set_field("title", QuotedString::new("My manual".to_owned()));
+/// let mut resolver = resolver.resolve().expect_err("The required title field is not set");
+/// resolver.set_field("title", QuotedString::new("My manual".to_owned()));
 ///
-/// let entry = builder.build().expect("All required fields have now been set so this is valid");
+/// let entry = resolver.resolve().expect("All required fields have now been set so this is valid");
 ///
 /// assert_eq!("cite_key", entry.cite());
 /// assert_eq!("My manual", &**entry.title());
 /// ```
 ///
 #[derive(Debug)]
-pub struct Builder {
+pub struct Resolver {
     cite: Option<String>,
     req: HashSet<Cow<'static, str>>,
     fields: HashMap<String, QuotedString>,
-    entry_build: fn(Self) -> Entry,
+    entry_resolve: fn(Self) -> Entry,
 }
 
-impl Builder {
+impl Resolver {
     /// Returns the cite key for the entry being built.
     ///
-    /// The cite key may either be a known value given to the builder or will be generated using
+    /// The cite key may either be a known value given to the resolver or will be generated using
     /// the `author` and `year` field if available.
     #[must_use]
     pub fn cite(&self) -> Cow<'_, str> {
@@ -462,21 +462,21 @@ impl Builder {
         }
     }
 
-    /// Build an entry from the fields added in this builder.
+    /// Build an entry from the fields added in this resolver.
     ///
     /// # Errors
     /// Returns `Err(Self)` when the required fields have not been set to make a valid [`Entry`],
     /// returning `Self` allows for the user to retry.
-    pub fn build(self) -> Result<Entry, Self> {
+    pub fn resolve(self) -> Result<Entry, Self> {
         if self.req.is_empty() {
-            Ok((self.entry_build)(self))
+            Ok((self.entry_resolve)(self))
         } else {
             Err(self)
         }
     }
 
     /// Returns an iterator of the required fields that need to be set in order to make this
-    /// builder succeed.
+    /// resolver succeed.
     ///
     /// # Examples
     ///
@@ -484,19 +484,19 @@ impl Builder {
     /// use std::borrow::Cow;
     /// use seb::ast::{Manual, QuotedString};
     ///
-    /// let mut builder = Manual::builder_with_cite("cite".to_owned());
-    /// assert_eq!(Some(&Cow::Borrowed("title")), builder.required_fields().next());
+    /// let mut resolver = Manual::resolver_with_cite("cite".to_owned());
+    /// assert_eq!(Some(&Cow::Borrowed("title")), resolver.required_fields().next());
     ///
     /// // set the `title` field then check if the required_fields is returning an empty iter.
-    /// builder.title(QuotedString::new("My manual".to_owned()));
-    /// assert_eq!(None, builder.required_fields().next());
+    /// resolver.title(QuotedString::new("My manual".to_owned()));
+    /// assert_eq!(None, resolver.required_fields().next());
     pub fn required_fields(&self) -> impl Iterator<Item = &Cow<'static, str>> {
         self.req.iter()
     }
 
     /// Sets a field value by field name.
     ///
-    /// When the field is set multiple times the last value is used when building the [`Entry`] type.
+    /// When the field is set multiple times the last value is used when resolveing the [`Entry`] type.
     /// The `name` of the field is always transformed into the lowercase internally before setting
     /// the field so users of this API don't need to do this.
     #[inline]
@@ -515,19 +515,19 @@ impl Builder {
     }
 }
 
-impl FieldQuery for Builder {
+impl FieldQuery for Resolver {
     fn get_field(&self, name: &str) -> Option<&QuotedString> {
         self.fields.get(name)
     }
 }
 
-macro_rules! impl_builder {
+macro_rules! impl_resolver {
     ($($field:ident),*$(,)?) => {
-        impl Builder {
+        impl Resolver {
             $(
                 /// Sets the field value with the name of this method.
                 ///
-                /// This method is equivalent to using the [`Builder::set_field`] method with the
+                /// This method is equivalent to using the [`Resolver::set_field`] method with the
                 /// field name and value.
                 #[inline]
                 pub fn $field(&mut self, value: QuotedString) {
@@ -538,7 +538,7 @@ macro_rules! impl_builder {
     };
 }
 
-impl_builder!(
+impl_resolver!(
     author,
     book_title,
     chapter,

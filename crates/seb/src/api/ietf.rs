@@ -1,6 +1,6 @@
 use crate::{
     api::format_api,
-    ast::{Biblio, BiblioBuilder},
+    ast::{Biblio, BiblioResolver},
     format::BibTex,
 };
 
@@ -14,7 +14,7 @@ macro_rules! ietf_url {
 
 pub(crate) fn get_entry_by_rfc<C: Client>(
     number: usize,
-) -> Result<Result<Biblio, BiblioBuilder>, Error> {
+) -> Result<Result<Biblio, BiblioResolver>, Error> {
     format_api::get_entry_by_url::<C, BibTex>(&ietf_url!(number))
 }
 

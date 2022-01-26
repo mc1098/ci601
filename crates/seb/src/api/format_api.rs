@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Biblio, BiblioBuilder},
+    ast::{Biblio, BiblioResolver},
     format::Format,
 };
 
@@ -7,7 +7,7 @@ use super::{Client, Error};
 
 pub(crate) fn get_entry_by_url<C: Client, F: Format>(
     url: &str,
-) -> Result<Result<Biblio, BiblioBuilder>, Error> {
+) -> Result<Result<Biblio, BiblioResolver>, Error> {
     let client = C::default();
 
     client
@@ -49,20 +49,20 @@ mod tests {
     }
 
     #[test]
-    fn valid_and_incomplete_entry_returns_builder() {
-        let should_be_builder =
+    fn valid_and_incomplete_entry_returns_resolver() {
+        let should_be_resolver =
             get_entry_by_url::<MockTextClient<ValidIncompleteEntryProducer>, BibTex>("test")
                 .expect("ValidIncompleteEntryProducer should always produce an ok response");
 
-        let mut builder = should_be_builder
+        let mut resolver = should_be_resolver
             .expect_err("ValidIncompleteEntryProducer should produce a valid but incomplete entry");
 
-        let entry_builder = builder
+        let entry_resolver = resolver
             .unresolved()
             .next()
-            .expect("BiblioBuilder should have a single unresolved entry builder");
+            .expect("BiblioResolver should have a single unresolved entry resolver");
 
-        assert_eq!("test", entry_builder.cite());
+        assert_eq!("test", entry_resolver.cite());
     }
 
     #[test]
