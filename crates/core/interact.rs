@@ -63,11 +63,10 @@ pub fn user_resolve_entry(resolver: &mut EntryResolver) -> eyre::Result<()> {
         .map_or_else(|| "No title".to_owned(), |qs| qs.to_string());
     println!("Missing required fields for entry: {title}");
 
-    let fields: Vec<_> = resolver.required_fields().cloned().collect();
-
-    for field in fields {
-        let input = user_input(format!("Enter value for the {field} field"))?;
-        resolver.set_field(&field, QuotedString::new(input));
+    while let Some(field_entry) = resolver.next_required_entry() {
+        let input = user_input(format!("Enter value for the {} field", field_entry.key()))?;
+        field_entry.insert(QuotedString::new(input));
     }
+
     Ok(())
 }
