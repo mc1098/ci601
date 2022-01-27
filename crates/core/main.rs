@@ -15,7 +15,7 @@ mod file;
 mod interact;
 
 use app::resolve_entry_resolver;
-use clap::{AppSettings, Parser, Subcommand};
+use clap::{AppSettings, Args, Parser, Subcommand};
 use eyre::{eyre, Context};
 use interact::user_resolve_biblio_resolver;
 use log::{info, trace};
@@ -36,10 +36,13 @@ fn main() {
 fn try_main() -> Result<(), Box<dyn error::Error>> {
     let Cli {
         command,
-        file,
-        interact,
-        verbosity,
-        quiet,
+        global_opts:
+            GlobalOpts {
+                file,
+                interact,
+                verbosity,
+                quiet,
+            },
     } = Cli::parse();
 
     setup_errlog(verbosity as usize, quiet)?;
@@ -98,24 +101,8 @@ struct Cli {
     #[clap(subcommand)]
     command: Commands,
 
-    /// The name of the file
-    #[clap(short, long, parse(from_os_str), global = true)]
-    file: Option<PathBuf>,
-
-    /// Enables interactive mode, which allows for dynamically resolving invalid entries.
-    #[clap(short, long, global = true)]
-    interact: bool,
-
-    /// How chatty the program is when performing commands
-    ///
-    /// The number of times this flag is used will increase how chatty
-    /// the program is.
-    #[clap(short, long, parse(from_occurrences), global = true)]
-    verbosity: u8,
-
-    /// Prevents the program from writing to stdout, errors will still be printed to stderr.
-    #[clap(short, long, global = true)]
-    quiet: bool,
+    #[clap(flatten)]
+    global_opts: GlobalOpts,
 }
 
 #[derive(Subcommand)]
@@ -270,4 +257,26 @@ impl Commands {
             }
         }
     }
+}
+
+#[derive(Debug, Args)]
+struct GlobalOpts {
+    /// The name of the file
+    #[clap(short, long, parse(from_os_str), global = true)]
+    file: Option<PathBuf>,
+
+    /// Enables interactive mode, which allows for dynamically resolving invalid entries.
+    #[clap(short, long, global = true)]
+    interact: bool,
+
+    /// How chatty the program is when performing commands
+    ///
+    /// The number of times this flag is used will increase how chatty
+    /// the program is.
+    #[clap(short, long, parse(from_occurrences), global = true)]
+    verbosity: u8,
+
+    /// Prevents the program from writing to stdout, errors will still be printed to stderr.
+    #[clap(short, long, global = true)]
+    quiet: bool,
 }
