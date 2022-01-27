@@ -28,8 +28,6 @@ jobs:
     outputs:
       upload_url: ${{ steps.release.outputs.upload_url }}
     steps:
-      - name: Get the release version from the tag
-        shell: bash
       - name: Create GitHub release
         id: release
         uses: actions/create-release@v1
@@ -42,7 +40,6 @@ jobs:
   #############################
   # BUILD 
   #############################
-  
   build-release:
     name: build-release
     needs: ['create-release']
@@ -75,3 +72,4 @@ jobs:
         asset_path: ${{ env.ASSET }}
         asset_name: ${{ env.ASSET }}
         asset_content_type: application/octet-stream
+  
