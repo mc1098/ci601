@@ -76,7 +76,7 @@ fn bibtex_esc(s: &str) -> String {
     format!("{{{s}}}")
 }
 
-fn compose_fields(fields: &[ast::Field]) -> String {
+fn compose_fields(fields: &[ast::Field<'_, '_>]) -> String {
     fields
         .iter()
         .map(|field| {

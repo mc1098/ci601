@@ -6,7 +6,7 @@
     clippy::missing_safety_doc,
     clippy::missing_const_for_fn
 )]
-#![warn(missing_docs)]
+#![warn(missing_docs, rust_2018_idioms)]
 #![allow(clippy::module_name_repetitions)]
 
 //! # seb

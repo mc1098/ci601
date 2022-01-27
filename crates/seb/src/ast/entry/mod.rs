@@ -78,7 +78,7 @@ macro_rules! entry_impl {
             /// The fields returned include the required and optional fields in no particular
             /// order.
             #[must_use]
-            pub fn fields(&self) -> Vec<Field> {
+            pub fn fields(&self) -> Vec<Field<'_, '_>> {
                 match self {
                     $(Self::$target(data) => data.fields(),)*
                 }
@@ -140,8 +140,8 @@ macro_rules! entry_impl {
                     /// The fields returned include the required and optional fields in no particular
                     /// order.
                     #[must_use]
-                    pub fn fields(&self) -> Vec<Field> {
-                        let mut fields: Vec<Field> = [$((stringify!($req), &self.$req),)+]
+                    pub fn fields(&self) -> Vec<Field<'_, '_>> {
+                        let mut fields: Vec<_> = [$((stringify!($req), &self.$req),)+]
                             .into_iter()
                             .map(tuple_to_field)
                             .collect();
