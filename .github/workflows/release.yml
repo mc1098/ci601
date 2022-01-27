@@ -48,8 +48,8 @@ jobs:
       matrix:
         config:
           - os: ubuntu-latest
-            # - os: macos-latest
-            #- os: windows-latest
+          - os: macos-latest
+          - os: windows-latest
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
@@ -63,19 +63,21 @@ jobs:
     - name: Build release binary
       run: cargo build --verbose --release --target-dir ./target/${{ matrix.config.os }}
 
-    - name: Check out dirs
+    - name: Asset path setup
       run: |
-        ls
-        ls ./target/
-        ls ./target/${{ matrix.config.os }}
-    
+        if [ "${{ matrix.config.os }}" = "windows-latest" ]; then
+          echo "ASSET=./target/${{ matrix.config.os }}/release/seb.exe" >> $GITHUB_ENV
+        else
+          echo "ASSET=./target/${{ matrix.config.os }}/release/seb" >> $GITHUB_ENV
+        fi
+
     - name: Upload release archive
       uses: actions/upload-release-asset@v1.0.1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: ./target/${{ matrix.config.os }}/seb
+        asset_path: ${{ env.ASSET }}
         asset_name: seb-${{ matrix.config.os}}
         asset_content_type: application/octet-stream
   
