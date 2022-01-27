@@ -43,7 +43,7 @@ jobs:
   build-release:
     name: build-release
     needs: ['create-release']
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.config.os }}
     strategy:
       matrix:
         config:
@@ -61,8 +61,17 @@ jobs:
         override: true
         
     - name: Build release binary
-      run: cargo build --verbose --release
-    
+      run: cargo build --verbose --release --target-dir ./target/${{ matrix.config.os }}
+
+    - name: Asset path setup
+      shell: bash
+      run: |
+        if [ "${{ matrix.config.os }}" = "windows-latest" ]; then
+          echo "ASSET=./target/${{ matrix.config.os }}/release/seb.exe" >> $GITHUB_ENV
+        else
+          echo "ASSET=./target/${{ matrix.config.os }}/release/seb" >> $GITHUB_ENV
+        fi
+
     - name: Upload release archive
       uses: actions/upload-release-asset@v1.0.1
       env:
@@ -70,6 +79,6 @@ jobs:
       with:
         upload_url: ${{ needs.create-release.outputs.upload_url }}
         asset_path: ${{ env.ASSET }}
-        asset_name: ${{ env.ASSET }}
+        asset_name: seb-${{ matrix.config.os}}
         asset_content_type: application/octet-stream
   
