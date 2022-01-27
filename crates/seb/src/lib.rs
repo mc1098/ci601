@@ -30,13 +30,16 @@ type Client = reqwest::blocking::Client;
 
 /// Search bibliographic entries by `doi` using the default API.
 ///
-/// Searching by `doi` should only return a single [`Entry`] but a [`Vec`] is used to provide a
+/// Searching by `doi` should only return a single [Entry][E] but a [`Vec`] is used to provide a
 /// consistent API across all `entries_by_*` functions.
+///
 ///
 /// # Errors
 ///
-/// An [`Err`] is returned when no entry is found for the `doi`.
-/// An [`Err`] is returned when the response from the API cannot be parsed into a valid [`Entry`].
+/// An `Err` is returned when no entry is found for the `doi`.
+/// An `Err` is returned when the response from the API cannot be parsed into a valid [Entry][E].
+///
+/// [E]: ast::Entry
 #[inline]
 pub fn entries_by_doi(doi: &str) -> Result<Result<Biblio, BiblioResolver>, Error> {
     trace!("Search entries by doi of '{doi}'");
@@ -45,13 +48,15 @@ pub fn entries_by_doi(doi: &str) -> Result<Result<Biblio, BiblioResolver>, Error
 
 /// Search bibliographic entries by `isbn` using the default API.
 ///
-/// Searching by `isbn` should only return a single [`Entry`] but a [`Vec`] is used to provide a
+/// Searching by `isbn` should only return a single [Entry][E] but a [`Vec`] is used to provide a
 /// consistent API across all `entries_by_*` functions.
 ///
 /// # Errors
 ///
-/// An [`Err`] is returned when no entry is found for the `isbn`.
-/// An [`Err`] is returned when the response from the API cannot be parsed into a valid [`Entry`].
+/// An `Err` is returned when no entry is found for the `isbn`.
+/// An `Err` is returned when the response from the API cannot be parsed into a valid [Entry][E].
+///
+/// [E]: ast::Entry
 #[inline]
 pub fn entries_by_isbn(isbn: &str) -> Result<Result<Biblio, BiblioResolver>, Error> {
     trace!("Search entries by ISBN of '{isbn}'");
@@ -60,14 +65,16 @@ pub fn entries_by_isbn(isbn: &str) -> Result<Result<Biblio, BiblioResolver>, Err
 
 /// Search bibliographic entries by `IETF RFC number`.
 ///
-/// Searching by `IETF RFC number` should only return a single [`Entry`] but a [`Vec`] is used to
+/// Searching by `IETF RFC number` should only return a single [Entry][E] but a [`Vec`] is used to
 /// provide a consistent API across all `entries_by_*` functions.
 ///
 /// # Errors
 ///
-/// An [`Err`] is returned when no entry is found for the RFC number.
-/// An [`Err`] is returned when an error occurs trying to retrive the textual data from the url.
-/// An [`Err`] is returned when the response from the API cannot be parsed into a valid [`Entry`].
+/// An `Err` is returned when no entry is found for the RFC number.
+/// An `Err` is returned when an error occurs trying to retrive the textual data from the url.
+/// An `Err` is returned when the response from the API cannot be parsed into a valid [Entry][E].
+///
+/// [E]: ast::Entry
 #[inline]
 pub fn entries_by_rfc(number: usize) -> Result<Result<Biblio, BiblioResolver>, Error> {
     trace!("Search entries by IETF RFC number '{number}'");
@@ -79,9 +86,11 @@ pub fn entries_by_rfc(number: usize) -> Result<Result<Biblio, BiblioResolver>, E
 ///
 /// # Errors
 ///
-/// An [`Err`] is returned when no entry is found at the `url`.
-/// An [`Err`] is returned when an error occurs trying to retrive the textual data from the url.
-/// An [`Err`] is returned when the response from the API cannot be parsed into a valid [`Entry`].
+/// An `Err` is returned when no entry is found at the `url`.
+/// An `Err` is returned when an error occurs trying to retrive the textual data from the url.
+/// An `Err` is returned when the response from the API cannot be parsed into a valid [Entry][E].
+///
+/// [E]: ast::Entry
 #[inline]
 pub fn entries_by_url<F: Format>(url: &str) -> Result<Result<Biblio, BiblioResolver>, Error> {
     trace!("Search entries at url of '{url}'");

@@ -83,7 +83,7 @@ impl Biblio {
 
     /// Tests if any field in this [`Biblio`] matches a predicate.
     ///
-    /// [`Self::contains_field`] takes a `key` value that should match a [`Field::name`] and
+    /// [`Self::contains_field`] takes a `key` value that should match a [`Field::name`][FN] and
     /// [`Self::contains_field`] takes a closure that returns `true` or `false`. It applies this
     /// closure to each field in each entry of the [`Biblio`], and if any of them return `true`, then
     /// so does [`Self::contains_field`]. If they all return `false`, it returns `false`.
@@ -93,6 +93,8 @@ impl Biblio {
     /// `true`.
     ///
     /// An empty [`Biblio`] will always return `false`.
+    ///
+    /// [FN]: [seb::ast::Field::name]
     pub fn contains_field<P>(&self, key: &str, predicate: P) -> bool
     where
         P: Fn(&QuotedString) -> bool,
