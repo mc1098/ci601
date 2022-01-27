@@ -10,7 +10,7 @@ pub use resolver::*;
 pub trait FieldQuery {
     /// Searches for a field value that matches the `name` given.
     ///
-    /// [`Self::find_field`] returns `Some(&QuotedString)` when a matching field is found
+    /// [`Self::get_field`] returns `Some(&QuotedString)` when a matching field is found
     /// and the return is the value of that matching field, returns `None` when no field
     /// matches the `name`.
     fn get_field(&self, name: &str) -> Option<&QuotedString>;
