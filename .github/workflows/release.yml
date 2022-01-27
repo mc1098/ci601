@@ -64,6 +64,7 @@ jobs:
       run: cargo build --verbose --release --target-dir ./target/${{ matrix.config.os }}
 
     - name: Asset path setup
+      shell: bash
       run: |
         if [ "${{ matrix.config.os }}" = "windows-latest" ]; then
           echo "ASSET=./target/${{ matrix.config.os }}/release/seb.exe" >> $GITHUB_ENV
