@@ -99,22 +99,22 @@ struct Cli {
     command: Commands,
 
     /// The name of the file
-    #[clap(short, long, parse(from_os_str))]
+    #[clap(short, long, parse(from_os_str), global = true)]
     file: Option<PathBuf>,
 
     /// Enables interactive mode, which allows for dynamically resolving invalid entries.
-    #[clap(short, long)]
+    #[clap(short, long, global = true)]
     interact: bool,
 
     /// How chatty the program is when performing commands
     ///
     /// The number of times this flag is used will increase how chatty
     /// the program is.
-    #[clap(short, long, parse(from_occurrences))]
+    #[clap(short, long, parse(from_occurrences), global = true)]
     verbosity: u8,
 
     /// Prevents the program from writing to stdout, errors will still be printed to stderr.
-    #[clap(short, long)]
+    #[clap(short, long, global = true)]
     quiet: bool,
 }
 
