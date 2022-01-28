@@ -171,6 +171,7 @@ macro_rules! entry_impl {
                     #[must_use]
                     pub fn resolver() -> Resolver {
                         Resolver {
+                            target: stringify!($mod),
                             cite: None,
                             req: [$(Cow::Borrowed(stringify!($req)),)+].into_iter().collect(),
                             fields: HashMap::new(),
@@ -183,6 +184,7 @@ macro_rules! entry_impl {
                     #[must_use]
                     pub fn resolver_with_cite<S: Into<String>>(cite: S) -> Resolver {
                         Resolver {
+                            target: stringify!($mod),
                             cite: Some(cite.into()),
                             req: [$(Cow::Borrowed(stringify!($req)),)+].into_iter().collect(),
                             fields: HashMap::new(),

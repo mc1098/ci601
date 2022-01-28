@@ -249,6 +249,21 @@ where
     (left, right)
 }
 
+impl std::fmt::Display for BiblioResolver {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for unresolved in &self.resolvers {
+            writeln!(f, "{}", unresolved)?;
+        }
+
+        write!(
+            f,
+            "hint: consider enabling interactive mode (-i / --interact) to add missing fields."
+        )?;
+        Ok(())
+    }
+}
+impl std::error::Error for BiblioResolver {}
+
 #[cfg(test)]
 mod tests {
 

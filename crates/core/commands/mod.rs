@@ -25,7 +25,11 @@ pub enum Commands {
 }
 
 impl Commands {
-    pub fn execute(self, biblio: &mut Biblio, interact: bool) -> eyre::Result<String> {
+    pub fn execute(
+        self,
+        biblio: &mut Biblio,
+        interact: bool,
+    ) -> Result<String, Box<dyn std::error::Error>> {
         match self {
             Commands::Add { command } => command.execute(biblio, interact),
             Commands::Rm { cite } => {
