@@ -47,8 +47,10 @@ pub enum AddCommands {
     },
 }
 
+type DynError = Box<dyn std::error::Error>;
+
 impl AddCommands {
-    pub(super) fn execute(self, biblio: &mut Biblio, interact: bool) -> eyre::Result<String> {
+    pub(super) fn execute(self, biblio: &mut Biblio, interact: bool) -> Result<String, DynError> {
         let entry = if interact {
             self.interact_execute(biblio)?
         } else {
@@ -68,21 +70,15 @@ impl AddCommands {
         Ok(entry)
     }
 
-    fn detached_execute(self, biblio: &Biblio) -> eyre::Result<Entry> {
+    fn detached_execute(self, biblio: &Biblio) -> Result<Entry, DynError> {
         let mut entry = self.take_entry(biblio)?;
         self.set_cite(&mut entry);
         Ok(entry)
     }
 
-    fn take_entry(&self, biblio: &Biblio) -> eyre::Result<Entry> {
+    fn take_entry(&self, biblio: &Biblio) -> Result<Entry, DynError> {
         let bib = self.search_entries(biblio)?;
-        take_first_resolvable(bib).map_err(|_| {
-            eyre!(
-                "Entry choosen has missing required fields!\n \
-                                   hint: Missing fields can be added manually when the \
-                                   `--interact` flag is enabled"
-            )
-        })
+        take_first_resolvable(bib).map_err(Into::into)
     }
 
     fn search_entries(&self, biblio: &Biblio) -> eyre::Result<Result<Biblio, BiblioResolver>> {

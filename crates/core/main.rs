@@ -21,7 +21,6 @@ use interact::user_resolve_biblio_resolver;
 use seb::format::{BibTex, Reader, Writer};
 
 use clap::{Args, Parser};
-use eyre::eyre;
 use log::trace;
 
 fn main() {
@@ -56,13 +55,8 @@ fn try_main() -> Result<(), Box<dyn error::Error>> {
     let biblio = file.read_ast()?;
 
     let mut biblio = match biblio {
-        Ok(biblio) => biblio,
         Err(resolver) if interact => user_resolve_biblio_resolver(resolver)?,
-        Err(_) => {
-            return Err(
-                eyre!("Some entries in the bibliography are missing required fields").into(),
-            )
-        }
+        res => res?,
     };
 
     let command_res = command.execute(&mut biblio, interact);

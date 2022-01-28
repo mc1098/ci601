@@ -30,6 +30,7 @@ use super::Entry;
 ///
 #[derive(Debug)]
 pub struct Resolver {
+    pub(super) target: &'static str,
     pub(super) cite: Option<String>,
     pub(super) req: Vec<Cow<'static, str>>,
     pub(super) fields: HashMap<String, QuotedString>,
@@ -152,6 +153,27 @@ impl Resolver {
         self.fields.insert(name, value);
     }
 }
+
+impl std::fmt::Display for Resolver {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(
+            f,
+            "error: missing required fields in {} entry\nfound:",
+            self.target
+        )?;
+
+        for set_field in &self.fields {
+            writeln!(f, "    {}: {}", set_field.0, &**set_field.1)?;
+        }
+        writeln!(f, "missing:")?;
+        for req in &self.req {
+            writeln!(f, "    {req}")?;
+        }
+        Ok(())
+    }
+}
+
+impl std::error::Error for Resolver {}
 
 /// A view into a single required field for a [`Resolver`].
 ///
