@@ -126,10 +126,16 @@ impl TryFrom<Book> for Entry {
 
 #[cfg(test)]
 mod tests {
-    use crate::api::{impl_text_producer, MockJsonClient};
+    use super::{GoogleModel, Item, VolumeInfo};
+    use crate::{
+        api::{impl_text_producer, MockJsonClient},
+        ast::{self, FieldQuery},
+    };
+
+    const GOOGLE_BOOK_JSON: &str = include_str!("../../../../tests/data/google_book_json.txt");
 
     impl_text_producer! {
-        ValidJsonProducer => Ok(include_str!("../../../../tests/data/google_book_json.txt").to_owned()),
+        ValidJsonProducer => Ok(GOOGLE_BOOK_JSON.to_owned()),
     }
 
     #[test]
@@ -139,19 +145,48 @@ mod tests {
 
         res.expect("Should produce a resolved Biblio");
     }
-}
 
-#[test]
-fn book_can_be_derived_from_json() {
-    let isbn = "0735619670";
-    let json = include_str!("../../../../tests/data/google_book_json.txt");
-    let mut model: GoogleModel = serde_json::from_str(json).unwrap();
-    let book = &model.items.remove(0).build(isbn.to_owned());
+    #[test]
+    fn published_date_with_year_and_month_parsed_correctly() {
+        let item = Item {
+            volume_info: VolumeInfo {
+                authors: vec!["Ignore".to_owned()],
+                title: "Ignore".to_owned(),
+                publisher: "Ignore".to_owned(),
+                published_date: "2002-09-01".to_owned(),
+            },
+        };
 
-    // ISBN is not in the response so will be the default value until changed.
-    assert_eq!(isbn, book.isbn);
-    assert_eq!("Steve McConnell", book.volume_info.authors[0]);
-    assert_eq!("Code Complete", book.volume_info.title);
-    assert_eq!("DV-Professional", book.volume_info.publisher);
-    assert_eq!("2004", book.volume_info.published_date);
+        let book = item.build("Ignore".to_owned());
+        let entry: ast::Entry = book
+            .try_into()
+            .expect("Book should not fail to convert into an entry");
+
+        assert_eq!(
+            "2002",
+            &**entry
+                .get_field("year")
+                .expect("Year field should be present")
+        );
+        assert_eq!(
+            "09",
+            &**entry
+                .get_field("month")
+                .expect("Month field should be present")
+        );
+    }
+
+    #[test]
+    fn book_can_be_derived_from_json() {
+        let isbn = "0735619670";
+        let mut model: GoogleModel = serde_json::from_str(GOOGLE_BOOK_JSON).unwrap();
+        let book = &model.items.remove(0).build(isbn.to_owned());
+
+        // ISBN is not in the response so will be the default value until changed.
+        assert_eq!(isbn, book.isbn);
+        assert_eq!("Steve McConnell", book.volume_info.authors[0]);
+        assert_eq!("Code Complete", book.volume_info.title);
+        assert_eq!("DV-Professional", book.volume_info.publisher);
+        assert_eq!("2004", book.volume_info.published_date);
+    }
 }
