@@ -82,7 +82,7 @@ fn compose_fields(fields: &[ast::Field<'_, '_>]) -> String {
         .map(|field| {
             format!(
                 "    {} = {{{}}},\n",
-                field.name,
+                field.name.replace('_', ""),
                 field.value.map_quoted(bibtex_esc)
             )
         })
@@ -114,7 +114,11 @@ impl From<biblatex::Entry> for ast::Resolver {
         };
 
         for (name, value) in fields.drain() {
-            resolver.set_field(&name, value.into());
+            if name == "booktitle" {
+                resolver.book_title(value.into());
+            } else {
+                resolver.set_field(&name, value.into());
+            }
         }
 
         resolver
