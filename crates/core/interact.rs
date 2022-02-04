@@ -19,6 +19,14 @@ pub fn user_select<S: ToString>(prompt: &str, items: &[S]) -> Result<usize> {
     }
 }
 
+pub fn user_select_map<T, F>(prompt: &str, items: &[T], f: F) -> Result<usize>
+where
+    F: Fn(&T) -> String,
+{
+    let display_items = items.iter().map(f).collect::<Vec<_>>();
+    user_select(prompt, &display_items)
+}
+
 pub fn user_select_entry(mut entries: Vec<Entry>) -> Result<Entry> {
     let items = entries_titles(&entries);
     user_select("Confirm entry", &items).map(|i| entries.remove(i))

@@ -96,3 +96,9 @@ pub fn entries_by_url<F: Format>(url: &str) -> Result<Result<Biblio, BiblioResol
     trace!("Search entries at url of '{url}'");
     api::format_api::get_entry_by_url::<Client, F>(url)
 }
+
+/// # Errors
+pub fn entry_stubs_by_title(title: &str) -> Result<Vec<(String, String)>, Error> {
+    trace!("Search entries that have a title of '{title}'");
+    api::cross_ref::get_entry_stubs_by_title::<Client>(title)
+}

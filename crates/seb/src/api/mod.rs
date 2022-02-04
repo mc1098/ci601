@@ -37,10 +37,13 @@ impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Network(_) => f.write_str("Network error"),
-            Self::Deserialize(_) => f.write_str(
-                "Cannot parse or deserialize the information returned \
+            Self::Deserialize(e) => {
+                dbg!(e);
+                f.write_str(
+                    "Cannot parse or deserialize the information returned \
                 by the API",
-            ),
+                )
+            }
             Self::NoValue => f.write_str("No value was found from the API for the request"),
         }
     }
