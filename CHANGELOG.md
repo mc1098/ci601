@@ -26,4 +26,6 @@ Features:
   Resolve entrys with missing fields at runtime.
 * [FEAT #66](https://github.com/mc1098/seb/pull/66):
   Interact mode enabled with `--interact` or `-i` (gates FEAT #23 & 61)
+* [FEAT #89](https://github.com/mc1098/seb/pull/89):
+  Search and add bibliographic entry by title.
 
