@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use eyre::eyre;
 use log::{info, trace};
 use serde::Deserialize;
@@ -89,9 +91,21 @@ impl TryFrom<Book> for Entry {
                     authors,
                     title,
                     publisher,
-                    published_date: year,
+                    published_date,
                 },
         } = book;
+
+        // date_parts = Year-Month-Day, where Day is not often used.
+        let mut date_parts = published_date.split('-');
+
+        let year = date_parts
+            .next()
+            .ok_or_else(|| Error::Deserialize(
+                eyre!("Date format was different then expected - aborting to avoid invalid dates in entry")
+                .into()
+            ))?.to_owned();
+
+        let month = date_parts.next();
 
         // create citation_key based on first author + year.
         let mut cite = authors
@@ -108,16 +122,19 @@ impl TryFrom<Book> for Entry {
 
         let title = ast::QuotedString::new(title);
 
+        let mut optional = HashMap::from([("isbn".to_owned(), ast::QuotedString::new(isbn))]);
+
+        if let Some(month) = month {
+            optional.insert("month".to_owned(), ast::QuotedString::new(month.to_owned()));
+        }
+
         let data = ast::Book {
             cite,
             author: ast::QuotedString::new(authors.join(",")),
             title,
             publisher: ast::QuotedString::new(publisher),
             year: ast::QuotedString::new(year),
-            optional: std::collections::HashMap::from([(
-                "isbn".to_owned(),
-                ast::QuotedString::new(isbn),
-            )]),
+            optional,
         };
 
         Ok(Self::Book(data))
