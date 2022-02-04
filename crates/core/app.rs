@@ -1,4 +1,5 @@
 use eyre::eyre;
+use log::trace;
 use seb::ast::{Biblio, BiblioResolver, Entry, Resolver as EntryResolver};
 
 use crate::interact::{user_resolve_entry, user_select, user_select_entry};
@@ -49,6 +50,7 @@ pub fn resolve_entry_resolver(entry_resolver: EntryResolver) -> eyre::Result<Ent
 }
 
 pub fn check_entry_field_duplication(bib: &Biblio, name: &str, value: &str) -> eyre::Result<()> {
+    trace!("Checking current bibliography for possible duplicate {name} of '{value}'");
     if bib.contains_field(name, |f| &**f == value) {
         Err(eyre!(
             "An entry already exists with a {} field with the value of '{}'.",
@@ -56,6 +58,7 @@ pub fn check_entry_field_duplication(bib: &Biblio, name: &str, value: &str) -> e
             value
         ))
     } else {
+        trace!("No duplicate found!");
         Ok(())
     }
 }

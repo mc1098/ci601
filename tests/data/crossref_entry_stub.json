@@ -1,0 +1,110 @@
+{
+  "status": "ok",
+  "message-type": "work-list",
+  "message-version": "1.0.0",
+  "message": {
+    "facets": {},
+    "total-results": 21,
+    "items": [
+      {
+        "DOI": "10.1007/978-3-319-23796-1_15",
+        "title": ["BibTEX"]
+      },
+      {
+        "DOI": "10.1007/978-1-4757-2446-2_10",
+        "title": ["BIBTEX"]
+      },
+      {
+        "DOI": "10.1007/978-0-387-68852-7_16",
+        "title": ["Bibtex"]
+      },
+      {
+        "DOI": "10.1524/9783486850468.198",
+        "title": ["\u0392 BIBTEX"]
+      },
+      {
+        "DOI": "10.1007/978-1-4612-2134-0_10",
+        "title": ["Chapter 10 BIBTEX"]
+      },
+      {
+        "DOI": "10.1017/cbo9780511816543.019",
+        "title": ["The Refer and BibTeX format"]
+      },
+      {
+        "DOI": "10.24193/subbi.2021.1.08",
+        "title": ["BibTeX for the Romanian Language"]
+      },
+      {
+        "DOI": "10.5802/cg.291",
+        "title": ["Vers une extension multilingue de BibTeX"]
+      },
+      {
+        "DOI": "10.1007/978-3-319-47831-9_15",
+        "title": ["Bibliography with the BIBTeX Program"]
+      },
+      {
+        "DOI": "10.1137/1.9781611976106.ch8",
+        "title": ["Chapter 8: TEX, LATEX, and BIBTEX"]
+      },
+      {
+        "DOI": "10.1145/1874590.1874592",
+        "title": ["BibTeX document generating using semantic web technologies"]
+      },
+      {
+        "DOI": "10.1080/0194262x.2013.832645",
+        "title": ["Reviews of Science for Science Librarians: BibTeX"]
+      },
+      {
+        "DOI": "10.1109/icsitech.2017.8257084",
+        "title": [
+          "Book recommendation using Neo4j graph database in BibTeX book metadata"
+        ]
+      },
+      {
+        "DOI": "10.7717/peerjcs.214/fig-2",
+        "title": ["Figure 2: Possible structure of a plugin for BibTeX."]
+      },
+      {
+        "DOI": "10.21105/joss.00338",
+        "title": [
+          "RefManageR: Import and Manage BibTeX and BibLaTeX References in R"
+        ]
+      },
+      {
+        "DOI": "10.15761/cmid.1000139",
+        "title": [
+          "Simplifying the management of scientific reference and citation with a minimalist DOI-BibTex-LaTeX approach"
+        ]
+      },
+      {
+        "DOI": "10.7717/peerjcs.242/table-6",
+        "title": [
+          "Table 6: Evaluation results on the bibtex data set by whether or not the labelset was observed (Subset A) or unobserved (Subset B) in the training data."
+        ]
+      },
+      {
+        "DOI": "10.32598/ptj.11.1.412.3",
+        "title": [
+          "Volume 11, Issue 1 (Winter 2021)                   PTJ 2021, 11(1): 13-24 | Back to browse issues page    10.32598/ptj.11.1.412.3 XML Print  Download citation: BibTeX | RIS | EndNote | Medlars | ProCite | Reference Manager | RefWorks Send citation to: Mendeley  Zotero  RefWorks Daneshjoo A, Mousavi Sadati S K, Pourahmad F. Effect of Corrective Exercise vs Corrective Games on Upper Crossed Syndrome in Female Students.PTJ. 2021; 11 (1) :13-24 URL: http://ptj.uswr.ac.ir/article-1-451-en.html      Effect of Corrective Exercise vs Corrective Games on Upper Crossed Syndrome in Female Students"
+        ]
+      },
+      {
+        "DOI": "10.32598/ppj.25.1.10",
+        "title": [
+          "Volume 25, Issue 1 (March 2021)                   Physiol Pharmacol 2021, 25(1): 1-6 | Back to browse issues page    10.32598/ppj.25.1.10 XML Print  Download citation: BibTeX | RIS | EndNote | Medlars | ProCite | Reference Manager | RefWorks Send citation to: Mendeley  Zotero  RefWorksNajafi H, Zarei R, Alimoradian A, Asafari M, Mohammadi M, Samadi F, et al . A review on humane endpoints in animal experimentation for biomedical research. Physiol Pharmacol. 2021; 25 (1) :1-6 URL: http://ppj.phypha.ir/article-1-1606-en.html      A review on humane endpoints in animal experimentation for biomedical research"
+        ]
+      },
+      {
+        "DOI": "10.32598/jhnm.31.4.2157",
+        "title": [
+          "Volume 31, Issue 4 (9-2021)                   J Holist Nurs Midwifery 2021, 31(4): 263-270 | Back to browse issues page    \u200e 10.32598/jhnm.31.4.2157 XML Print  Download citation: BibTeX | RIS | EndNote | Medlars | ProCite | Reference Manager | RefWorks Send citation to: Mendeley  Zotero  RefWorksPapi S, Izadi M, Behboodi L, Taheri-Kharameh Z, Hosseini F, Yousefi M et al . Oral Health Status in the Iranian Elderly: The Role of Nutrition Status and Health Literacy. J Holist Nurs Midwifery. 2021; 31 (4) :263-270 URL: http://hnmj.gums.ac.ir/article-1-1743-en.html      Oral Health Status in the Iranian Elderly: The Role of Nutrition Status and Health Literacy"
+        ]
+      }
+    ],
+    "items-per-page": 20,
+    "query": {
+      "start-index": 0,
+      "search-terms": null
+    }
+  }
+}
