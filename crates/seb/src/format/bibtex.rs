@@ -140,6 +140,8 @@ mod tests {
 
     use std::{borrow::Cow, collections::HashMap};
 
+    use crate::ast::FieldQuery;
+
     use super::*;
 
     fn fields() -> Vec<ast::Field<'static, 'static>> {
@@ -183,6 +185,28 @@ mod tests {
         let result = compose_fields(&fields);
 
         assert_eq!("    author = {Me},\n", result);
+    }
+
+    #[test]
+    fn book_title_in_bibtex_should_be_booktitle() {
+        let result = compose_fields(&[ast::Field {
+            name: Cow::Borrowed("book_title"),
+            value: Cow::Owned(QuotedString::new("value".to_owned())),
+        }]);
+
+        assert_eq!("    booktitle = {value},\n", result);
+    }
+
+    #[test]
+    fn parse_booktitle_field_as_book_title() {
+        let biblio = BibTex::new("@misc{cite, title={title},booktitle={Correct},}".to_owned())
+            .parse()
+            .expect("Valid BibTeX string")
+            .expect("Valid entry fields");
+
+        let entry = biblio.into_entries().remove(0);
+
+        assert_eq!("Correct", &**entry.get_field("book_title").unwrap());
     }
 
     #[test]
