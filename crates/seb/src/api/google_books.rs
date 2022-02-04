@@ -11,7 +11,9 @@ const GOOGLE_BOOKS_URL: &str = "https://www.googleapis.com/books/v1/volumes?q=is
 pub(crate) fn get_entries_by_isbn<C: Client>(
     isbn: &str,
 ) -> Result<std::result::Result<Biblio, BiblioResolver>, Error> {
-    get_book_info::<C>(isbn)
+    // remove hypen from ISBN-13 (if applicable)
+    let isbn = isbn.replace('-', "");
+    get_book_info::<C>(&isbn)
         .and_then(Entry::try_from)
         .map(|e| vec![e])
         .map(|entries| Ok(Biblio::new(entries)))
