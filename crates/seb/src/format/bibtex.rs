@@ -1,9 +1,11 @@
-use crate::ast::{self, Biblio, BiblioResolver, QuotedString};
+use crate::{
+    ast::{self, Biblio, BiblioResolver, QuotedString},
+    Error, ErrorKind,
+};
 
 use super::Format;
 
 use biblatex::Bibliography;
-use eyre::{eyre, Result};
 
 /// A type wrapper around [`String`] to represent a `BibTex` format string.
 #[derive(Debug)]
@@ -14,13 +16,15 @@ impl Format for BibTex {
         Self(val)
     }
 
-    fn parse(self) -> Result<std::result::Result<Biblio, BiblioResolver>> {
+    fn parse(self) -> Result<Result<Biblio, BiblioResolver>, Error> {
         let biblio = if self.0.is_empty() {
             Bibliography::new()
         } else {
             Bibliography::parse(&self.0)
                 .filter(|b| b.len() != 0)
-                .ok_or_else(|| eyre!("Cannot parse the BibTeX"))?
+                .ok_or_else(|| {
+                    Error::new(ErrorKind::Deserialize, "Unable to parse string as BibTeX")
+                })?
         };
         let entries = biblio.into_iter().map(ast::Resolver::from).collect();
         Ok(Biblio::try_resolve(entries))

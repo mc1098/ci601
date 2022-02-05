@@ -1,12 +1,14 @@
 use std::collections::HashMap;
 
-use eyre::eyre;
 use log::{info, trace};
 use serde::Deserialize;
 
-use crate::ast::{self, Biblio, BiblioResolver, Entry};
+use crate::{
+    ast::{self, Biblio, BiblioResolver, Entry},
+    Error, ErrorKind,
+};
 
-use super::{Client, Error};
+use super::Client;
 
 const GOOGLE_BOOKS_URL: &str = "https://www.googleapis.com/books/v1/volumes?q=isbn:";
 
@@ -31,7 +33,10 @@ pub(crate) fn get_book_info<C: Client>(isbn: &str) -> Result<Book, Error> {
 
     trace!("Request was successful");
 
-    let resolver = items.drain(..).next().ok_or(Error::NoValue)?;
+    let resolver = items
+        .drain(..)
+        .next()
+        .ok_or_else(|| Error::new(ErrorKind::NoValue, "No books found!"))?;
 
     Ok(resolver.build(isbn.to_owned()))
 }
@@ -100,10 +105,13 @@ impl TryFrom<Book> for Entry {
 
         let year = date_parts
             .next()
-            .ok_or_else(|| Error::Deserialize(
-                eyre!("Date format was different then expected - aborting to avoid invalid dates in entry")
-                .into()
-            ))?.to_owned();
+            .ok_or_else(|| {
+                Error::new(
+                    ErrorKind::Deserialize,
+                    "Date format was different then expected - aborting to avoid invalid dates in entry"
+                )
+            })?
+            .to_owned();
 
         let month = date_parts.next();
 
@@ -116,7 +124,10 @@ impl TryFrom<Book> for Entry {
                 s
             })
             .ok_or_else(|| {
-                Error::Deserialize(eyre!("Not authors found from resource response").into())
+                Error::new(
+                    ErrorKind::Deserialize,
+                    "No authors found from resource response",
+                )
             })?;
         cite.push_str(&year);
 

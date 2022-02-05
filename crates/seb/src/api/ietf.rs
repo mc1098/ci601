@@ -2,9 +2,10 @@ use crate::{
     api::format_api,
     ast::{Biblio, BiblioResolver},
     format::BibTex,
+    Error,
 };
 
-use super::{Client, Error};
+use super::Client;
 
 macro_rules! ietf_url {
     ($number: ident) => {
