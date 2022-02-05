@@ -1010,7 +1010,6 @@ name = "seb"
 version = "0.1.0"
 dependencies = [
  "biblatex",
- "eyre",
  "log",
  "reqwest",
  "serde",

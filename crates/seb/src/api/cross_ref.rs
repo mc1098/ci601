@@ -4,9 +4,10 @@ use crate::{
     api::format_api,
     ast::{Biblio, BiblioResolver},
     format::BibTex,
+    Error, ErrorKind,
 };
 
-use super::{Client, Error};
+use super::Client;
 
 macro_rules! crossref_url {
     ($doi: ident) => {
@@ -65,7 +66,10 @@ pub(crate) fn get_entry_stubs_by_title<C: Client>(
     let query_result: QueryResult = client.get_json(&url)?;
     let items = query_result.message.items;
     if items.is_empty() {
-        Err(Error::NoValue)
+        Err(Error::new(
+            ErrorKind::NoValue,
+            "No entries found for that title",
+        ))
     } else {
         Ok(items.into_iter().map(EntryStub::into_tuple).collect())
     }
@@ -75,7 +79,7 @@ pub(crate) fn get_entry_stubs_by_title<C: Client>(
 mod test {
     use crate::{
         api::{impl_text_producer, MockJsonClient},
-        Error,
+        ErrorKind,
     };
 
     use super::QueryResult;
@@ -109,12 +113,9 @@ mod test {
 
     #[test]
     fn empty_item_returns_no_value_error() {
-        let res = super::get_entry_stubs_by_title::<MockJsonClient<EmptyItemProducer>>("test");
+        let res = super::get_entry_stubs_by_title::<MockJsonClient<EmptyItemProducer>>("test")
+            .expect_err("EmptyItemProducer returns an Err");
 
-        assert!(
-            matches!(res, Err(Error::NoValue)),
-            "actual value was: {:?}",
-            res
-        );
+        assert_eq!(ErrorKind::NoValue, res.kind());
     }
 }

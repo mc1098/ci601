@@ -5,9 +5,12 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use seb::format::{Format, Reader, Writer};
+use seb::{
+    format::{Format, Reader, Writer},
+    Error, ErrorKind,
+};
 
-use eyre::{eyre, Context, Result};
+use eyre::{eyre, Context};
 use glob::glob;
 use log::{info, trace};
 
@@ -29,28 +32,35 @@ impl<F: Format> FormatFile<F> {
 impl<F: Format> Reader for FormatFile<F> {
     type Format = F;
 
-    fn read(&mut self) -> Result<Self::Format> {
-        read_file_to_string(&mut self.file).map(F::new)
+    fn read(&mut self) -> Result<Self::Format, Error> {
+        read_file_to_string(&mut self.file)
+            .map(F::new)
+            .map_err(|e| Error::wrap(ErrorKind::IO, e))
     }
 }
 
 impl<F: Format> Writer for FormatFile<F> {
     type Format = F;
 
-    fn write(&mut self, format: F) -> Result<()> {
+    fn write(&mut self, format: F) -> Result<(), Error> {
+        fn overrwrite_file_from_start(file: &mut File, bytes: &[u8]) -> std::io::Result<()> {
+            // Rewind the cursor back to the start of the file to write over the contents and set
+            // the length of the file to be equal to bytes so that existing data is removed
+            file.rewind()?;
+            file.set_len(bytes.len() as u64)?;
+            file.write_all(bytes)
+        }
+
         let bytes = format.raw().into_bytes();
-        // Rewind the cursor back to the start of the file to write over the contents and set
-        // the length of the file to be equal to bytes so that existing data is removed
-        self.file.rewind()?;
-        self.file.set_len(bytes.len() as u64)?;
-        self.file
-            .write_all(&bytes)
-            .wrap_err_with(|| eyre!("Cannot write format to file"))
+        overrwrite_file_from_start(&mut self.file, &bytes)
+            .map_err(|e| Error::wrap(ErrorKind::IO, e))
     }
 }
 
 #[allow(clippy::module_name_repetitions)]
-pub fn open_or_create_format_file<F: Format>(file_name: Option<PathBuf>) -> Result<FormatFile<F>> {
+pub fn open_or_create_format_file<F: Format>(
+    file_name: Option<PathBuf>,
+) -> eyre::Result<FormatFile<F>> {
     if let Some(path) = file_name {
         trace!("opening {} file as a {} file", path.display(), F::name());
         open_file_by_name(&path)
@@ -71,7 +81,7 @@ pub fn open_or_create_format_file<F: Format>(file_name: Option<PathBuf>) -> Resu
 }
 
 #[inline]
-fn open_file_for_read_and_write<F: Format>(path: &Path) -> Result<FormatFile<F>> {
+fn open_file_for_read_and_write<F: Format>(path: &Path) -> eyre::Result<FormatFile<F>> {
     OpenOptions::new()
         .read(true)
         .write(true)
@@ -86,7 +96,7 @@ fn open_file_for_read_and_write<F: Format>(path: &Path) -> Result<FormatFile<F>>
 }
 
 #[inline]
-fn create_file_for_read_and_write<F: Format>(path: &Path) -> Result<FormatFile<F>> {
+fn create_file_for_read_and_write<F: Format>(path: &Path) -> eyre::Result<FormatFile<F>> {
     OpenOptions::new()
         .create_new(true)
         .read(true)
@@ -101,7 +111,7 @@ fn create_file_for_read_and_write<F: Format>(path: &Path) -> Result<FormatFile<F
         })
 }
 
-fn open_file_by_name<F>(path: &Path) -> Result<FormatFile<F>>
+fn open_file_by_name<F>(path: &Path) -> eyre::Result<FormatFile<F>>
 where
     F: Format,
 {
@@ -109,7 +119,7 @@ where
     open_file_for_read_and_write(path_buf.as_path())
 }
 
-fn create_file_by_name<F>(path: &Path) -> Result<FormatFile<F>>
+fn create_file_by_name<F>(path: &Path) -> eyre::Result<FormatFile<F>>
 where
     F: Format,
 {
@@ -118,12 +128,12 @@ where
 }
 
 #[inline]
-fn find_format_file_in_current_directory<F: Format>() -> Result<FormatFile<F>> {
+fn find_format_file_in_current_directory<F: Format>() -> eyre::Result<FormatFile<F>> {
     let path = Path::new(".").with_extension(F::ext());
     find_format_file_in_directory(path)
 }
 
-fn find_format_file_in_directory<F, P>(dir: P) -> Result<FormatFile<F>>
+fn find_format_file_in_directory<F, P>(dir: P) -> eyre::Result<FormatFile<F>>
 where
     F: Format,
     P: AsRef<Path>,
@@ -158,7 +168,7 @@ where
     open_file_for_read_and_write(path_buf.as_path())
 }
 
-fn read_file_to_string(file: &mut File) -> Result<String> {
+fn read_file_to_string(file: &mut File) -> eyre::Result<String> {
     let mut content = String::new();
     file.read_to_string(&mut content)
         .wrap_err("Cannot read contents of file")

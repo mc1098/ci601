@@ -1,19 +1,17 @@
 use crate::{
     ast::{Biblio, BiblioResolver},
     format::Format,
+    Error,
 };
 
-use super::{Client, Error};
+use super::Client;
 
 pub(crate) fn get_entry_by_url<C: Client, F: Format>(
     url: &str,
 ) -> Result<Result<Biblio, BiblioResolver>, Error> {
     let client = C::default();
 
-    client
-        .get_text(url)
-        .map(F::new)
-        .and_then(|f| f.parse().map_err(|r| Error::Deserialize(r.into())))
+    client.get_text(url).map(F::new).and_then(Format::parse)
 }
 
 #[cfg(test)]
@@ -22,9 +20,10 @@ mod tests {
     use crate::{
         api::{impl_text_producer, MockTextClient, NetworkErrorProducer},
         format::BibTex,
+        ErrorKind,
     };
 
-    use super::{get_entry_by_url, Error};
+    use super::get_entry_by_url;
 
     impl_text_producer! {
         NotBibTexProducer => Ok("This is not valid BibTeX".to_owned()),
@@ -37,7 +36,7 @@ mod tests {
         let err = get_entry_by_url::<MockTextClient<NetworkErrorProducer>, BibTex>("test")
             .expect_err("MockErrorClient should always cause an error");
 
-        assert!(matches!(err, Error::Network(_)));
+        assert_eq!(ErrorKind::IO, err.kind());
     }
 
     #[test]
@@ -45,7 +44,7 @@ mod tests {
         let err = get_entry_by_url::<MockTextClient<NotBibTexProducer>, BibTex>("test")
             .expect_err("MockErrorClient should always cause an error");
 
-        assert!(matches!(err, Error::Deserialize(_)));
+        assert_eq!(ErrorKind::Deserialize, err.kind());
     }
 
     #[test]

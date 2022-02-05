@@ -5,59 +5,6 @@ pub(crate) mod format_api;
 pub(crate) mod google_books;
 pub(crate) mod ietf;
 
-/// The errors that may occur when using an API function
-#[derive(Debug)]
-#[non_exhaustive]
-pub enum Error {
-    /// A network error containing the source error.
-    Network(Box<dyn std::error::Error + Send + Sync>),
-    /// A deserialization or parsing error containing the source error.
-    Deserialize(Box<dyn std::error::Error + Send + Sync>),
-    /// An error when the API was expected to send back a value in the body.
-    NoValue,
-}
-
-impl Error {
-    fn network<E>(source: E) -> Self
-    where
-        E: std::error::Error + Send + Sync + 'static,
-    {
-        Self::Network(Box::new(source))
-    }
-
-    fn deserialize<E>(source: E) -> Self
-    where
-        E: std::error::Error + Send + Sync + 'static,
-    {
-        Self::Deserialize(Box::new(source))
-    }
-}
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Network(_) => f.write_str("Network error"),
-            Self::Deserialize(e) => {
-                dbg!(e);
-                f.write_str(
-                    "Cannot parse or deserialize the information returned \
-                by the API",
-                )
-            }
-            Self::NoValue => f.write_str("No value was found from the API for the request"),
-        }
-    }
-}
-
-impl std::error::Error for Error {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            Self::Network(src) | Self::Deserialize(src) => Some(src.as_ref()),
-            Self::NoValue => None,
-        }
-    }
-}
-
 pub trait Client
 where
     Self: Default,
@@ -70,11 +17,16 @@ where
 
 impl Client for reqwest::blocking::Client {
     fn get_text(&self, url: &str) -> Result<String, Error> {
-        let resp = self.get(url).send().map_err(Error::network)?;
-        let text = resp.text().map_err(Error::deserialize)?;
+        let resp = self
+            .get(url)
+            .send()
+            .map_err(|e| Error::wrap(ErrorKind::IO, e))?;
+        let text = resp
+            .text()
+            .map_err(|e| Error::wrap(ErrorKind::Deserialize, e))?;
 
         if text.is_empty() {
-            Err(Error::NoValue)
+            Err(Error::new(ErrorKind::NoValue, "Response text is empty"))
         } else {
             Ok(text)
         }
@@ -86,8 +38,8 @@ impl Client for reqwest::blocking::Client {
     {
         self.get(url)
             .send()
-            .map_err(Error::network)
-            .and_then(|r| r.json().map_err(Error::deserialize))
+            .map_err(|e| Error::wrap(ErrorKind::IO, e))
+            .and_then(|r| r.json().map_err(|e| Error::wrap(ErrorKind::Deserialize, e)))
     }
 }
 
@@ -95,6 +47,8 @@ impl Client for reqwest::blocking::Client {
 pub(crate) use test::{
     impl_text_producer, MockJsonClient, MockTextClient, NetworkErrorProducer, Producer,
 };
+
+use crate::{Error, ErrorKind};
 
 #[cfg(test)]
 mod test {
@@ -130,7 +84,7 @@ mod test {
                 pub(crate) struct $producer;
 
                 impl crate::api::Producer<String> for $producer {
-                    fn produce() -> Result<String, crate::api::Error> {
+                    fn produce() -> Result<String, crate::Error> {
                         $exp
                     }
                 }
@@ -138,7 +92,7 @@ mod test {
         };
     }
     impl_text_producer! {
-        NetworkErrorProducer => Err(Error::Network(eyre::eyre!("Network error").into())),
+        NetworkErrorProducer => Err(Error::new(ErrorKind::IO, "Network error")),
     }
 
     pub(crate) use impl_text_producer;
@@ -155,7 +109,9 @@ mod test {
         where
             T: serde::de::DeserializeOwned,
         {
-            P::produce().and_then(|s| serde_json::from_str(&s).map_err(Error::deserialize))
+            P::produce().and_then(|s| {
+                serde_json::from_str(&s).map_err(|e| Error::wrap(ErrorKind::Deserialize, e))
+            })
         }
     }
 }
