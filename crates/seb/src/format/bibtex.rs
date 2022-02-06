@@ -131,13 +131,74 @@ impl From<biblatex::Entry> for ast::Resolver {
 
 impl From<biblatex::Chunks> for QuotedString {
     fn from(chunks: biblatex::Chunks) -> Self {
-        let parts = chunks
-            .into_iter()
-            .map(|c| match c {
-                biblatex::Chunk::Verbatim(s) => (true, s),
-                biblatex::Chunk::Normal(s) => (false, s),
-            })
-            .collect();
+        use biblatex::Chunk::{self, Normal, Verbatim};
+
+        // Check last character for an escape and if found then start merging using `merge_escaped`
+        fn verbatim_chunk_merge(
+            verbatim_str: &mut String,
+            chunks: &mut impl Iterator<Item = Chunk>,
+        ) {
+            if verbatim_str
+                .chars()
+                .last()
+                .map(|c| c == '/')
+                .unwrap_or_default()
+            {
+                merge_escaped(verbatim_str, chunks);
+            }
+        }
+
+        // biblatex parses the chunks in a way where escaping a verbatim section is possible with
+        // '/'. We can't just call ChunksExt::to_biblatex_string because the same issue occurs so
+        // no easy out!
+        //
+        // This method corrects this by merging all chunks up including the following two `Normal`
+        // chunks and then includes a final `Verbatim` chunk.
+        //
+        // The following is an example:
+        // "{(HTTP/1.1)}"
+        //
+        // chunks: [Verbatim("(HTTP/"), Normal("1"), Verbatim("."), Normal("1"), Verbatim(")")];
+        //
+        // The whole thing should be a single verbatim chunk. The '/' escapes the verbatim chunk
+        // and causes the pattern V-N-V-N-V, where V is verbatim and N is normal.
+        //
+        // We also have to recursively check whether each verbatim part might also be another
+        // escape..
+        #[inline]
+        fn merge_escaped(dest: &mut String, chunks: &mut impl Iterator<Item = Chunk>) {
+            let mut normal_count = 0;
+            while let Some(chunk) = chunks.next() {
+                match chunk {
+                    Normal(s) => {
+                        normal_count += 1;
+                        dest.push_str(&s);
+                    }
+                    Verbatim(mut s) => {
+                        verbatim_chunk_merge(&mut s, chunks);
+                        dest.push_str(&s);
+                        if normal_count == 2 {
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut parts = vec![];
+
+        let mut chunk_iter = chunks.into_iter();
+        while let Some(chunk) = chunk_iter.next() {
+            match chunk {
+                Verbatim(mut s) => {
+                    verbatim_chunk_merge(&mut s, &mut chunk_iter);
+                    parts.push((true, s));
+                }
+                Normal(s) => {
+                    parts.push((false, s));
+                }
+            }
+        }
 
         Self::from_parts(parts)
     }
