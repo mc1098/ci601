@@ -168,6 +168,38 @@ mod tests {
     }
 
     #[test]
+    fn biblatex_verbatim_chunk_escape_is_corrected() {
+        use biblatex::Chunk::{Normal, Verbatim};
+        // This test is for the real use case when adding using ietf as the title field is often
+        // something like:
+        //
+        // title = {{Hypertext Transfer Protocol (HTTP/1.1): Authentication}}
+        //
+        // Notice the double curly braces - the whole title is verbatim and should not be styled
+        // differently...however biblatex parses the '/' as an escape and splits up the title into
+        // a mix of Verbatim and Normal chunks (per biblatex types).
+        //
+        // In the From<Chunks> impl we try to correct this by merging the escaped chunks back into
+        // the single verbatim for QuotedString.
+
+        // To reduce noise lets reduce the above example to the core problem
+        // biblatex will parse the following into the below chunks:
+        //
+        // "{(HTTP/1.1)}"
+        let chunks = vec![
+            Verbatim("(HTTP/".to_owned()),
+            Normal("1".to_owned()),
+            Verbatim(".".to_owned()),
+            Normal("1".to_owned()),
+            Verbatim(")".to_owned()),
+        ];
+
+        let qs = QuotedString::from(chunks);
+
+        assert_eq!("{(HTTP/1.1)}", qs.map_quoted(|s| format!("{{{s}}}")));
+    }
+
+    #[test]
     fn parse_then_compose_bibtex() {
         let bibtex_str = include_str!("../../../../tests/data/bibtex1.bib");
         let bibtex = BibTex::new(bibtex_str.to_owned());
