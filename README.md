@@ -10,13 +10,6 @@ Currently available subcommands:
 - [`seb add`](#add-subcommand)
 - [`seb rm`](#rm-subcommand)
 
-## File formats
-
-`seb` is being developed to accomodate multiple file formats for bibliography.
-
-Current supported formats:
-- `BibTeX` (default)
-
 ## Add Subcommand
 
 The `add` subcommand is used to search and add a bibliographic entry to a bibliography file. The `add`
@@ -112,3 +105,51 @@ $ seb rm rfc7230
 
 _"rfc7230" is the default cite key for the BibTeX format when adding an ietf entry with the RFC
 number of 7230_
+
+## Resolution of required fields
+
+`seb` will try and find the current bibliography that matches the file format, default is BibTeX (.bib),
+and parse it into a intemediate representation which for each entry type has a required set of fields
+in order to be considered resolved.
+
+Running `seb` normally with an incomplete entry will result in an error that
+explains the fields found and which were missing, it will also include a hint to run interactive mode:
+
+```bash
+$ # Non help command with seb will trigger this file check
+error: missing required fields in book entry
+found:
+    author: Me
+    title: My Incomplete book entry
+    publisher: Also me
+missing:
+    year
+
+hint: consider enabling interactive mode (-i / --interact) to add missing fields.
+```
+_Note: This output demonstrates that a valid book entry requires the following: author, title,
+publisher, year._
+
+### Resolving entries in interactive mode
+
+The above error output also comes with a hint - 'consider enabling interactive mode..'. This simply
+allows `seb` to provide the user the ability to add the missing field information manually:
+
+```bash
+$ # Non help command with seb with the -i flag set
+Missing required fields for entry: My Incomplete book entry
+Enter value for the year field: <CURSOR>
+```
+
+The `<CURSOR>` is where the cursor for input will be so the user can set the field value for `year`,
+in this case only one field needs to be added manually, however, `seb` will ask to resolve all required
+fields and will do this for every incomplete entry.
+
+**Resolving entries in interactive mode also applies to any entries found using the `add` subcommand!**
+
+## File formats
+
+`seb` is being developed to accomodate multiple file formats for bibliography.
+
+Current supported formats:
+- `BibTeX` (default)
