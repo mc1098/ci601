@@ -19,7 +19,6 @@ mod api;
 pub mod ast;
 mod error;
 pub mod format;
-pub mod parse;
 
 use ast::{Biblio, BiblioResolver};
 pub use error::{Error, ErrorKind};
