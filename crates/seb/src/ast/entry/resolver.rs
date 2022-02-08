@@ -30,7 +30,7 @@ use super::Entry;
 ///
 #[derive(Debug)]
 pub struct Resolver {
-    pub(super) target: &'static str,
+    pub(super) target: Cow<'static, str>,
     pub(super) cite: Option<String>,
     pub(super) req: Vec<Cow<'static, str>>,
     pub(super) fields: HashMap<String, QuotedString>,

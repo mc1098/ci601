@@ -43,6 +43,8 @@ macro_rules! entry_impl {
                 $(#[$target_comment])*
                 $target($target),
             )*
+            /// Any other resource not supported by other entry variants.
+            Other(Other),
         }
 
         impl Entry {
@@ -52,6 +54,7 @@ macro_rules! entry_impl {
             pub fn cite(&self) -> &str {
                 match self {
                     $(Self::$target(data) => &data.cite,)*
+                    Self::Other(other) => &other.cite,
                 }
             }
 
@@ -59,6 +62,7 @@ macro_rules! entry_impl {
             pub fn set_cite(&mut self, cite: String) {
                 match self {
                     $(Self::$target(data) => { data.cite = cite; },)*
+                    Self::Other(data) => { data.cite = cite; },
                 }
             }
 
@@ -70,6 +74,7 @@ macro_rules! entry_impl {
             pub const fn title(&self) -> &QuotedString {
                 match self {
                     $(Self::$target(data) => &data.title(),)*
+                    Self::Other(data) => &data.title,
                 }
             }
 
@@ -81,6 +86,7 @@ macro_rules! entry_impl {
             pub fn fields(&self) -> Vec<Field<'_, '_>> {
                 match self {
                     $(Self::$target(data) => data.fields(),)*
+                    Self::Other(data) => data.fields(),
                 }
             }
 
@@ -93,6 +99,7 @@ macro_rules! entry_impl {
             pub fn find_field(&self, name: &str) -> Option<&QuotedString> {
                 match self {
                     $(Self::$target(data) => data.find_field(name),)*
+                    Self::Other(data) => data.find_field(name),
                 }
             }
         }
@@ -101,6 +108,7 @@ macro_rules! entry_impl {
             fn get_field(&self, name: &str) -> Option<&QuotedString> {
                 match self {
                     $(Self::$target(data) => data.get_field(name),)*
+                    Self::Other(data) => data.get_field(name),
                 }
             }
         }
@@ -171,7 +179,7 @@ macro_rules! entry_impl {
                     #[must_use]
                     pub fn resolver() -> Resolver {
                         Resolver {
-                            target: stringify!($mod),
+                            target: Cow::Owned(stringify!($mod).replace('_', " ")),
                             cite: None,
                             req: [$(Cow::Borrowed(stringify!($req)),)+].into_iter().collect(),
                             fields: HashMap::new(),
@@ -184,7 +192,7 @@ macro_rules! entry_impl {
                     #[must_use]
                     pub fn resolver_with_cite<S: Into<String>>(cite: S) -> Resolver {
                         Resolver {
-                            target: stringify!($mod),
+                            target: Cow::Borrowed(stringify!($mod)),
                             cite: Some(cite.into()),
                             req: [$(Cow::Borrowed(stringify!($req)),)+].into_iter().collect(),
                             fields: HashMap::new(),
@@ -250,6 +258,75 @@ macro_rules! entry_impl {
 
             }
         )*
+    }
+}
+
+/// Any other resource not supported by other entry variants.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Other {
+    cite: String,
+    kind: String,
+    title: QuotedString,
+    optional: HashMap<String, QuotedString>,
+}
+
+impl Other {
+    /// The type of this custom entry.
+    #[must_use]
+    pub fn kind(&self) -> &str {
+        &self.kind
+    }
+
+    /// Creates a new [`Resolver`] for this type to ensure that the required fields
+    /// are set before the entry type can be built.
+    #[must_use]
+    pub fn resolver_with_cite<S: Into<String>>(cite: S, kind: String) -> Resolver {
+        Resolver {
+            target: Cow::Owned(kind),
+            cite: Some(cite.into()),
+            req: vec![Cow::Borrowed("title")],
+            fields: HashMap::new(),
+            entry_resolve: Self::resolve,
+        }
+    }
+
+    fn resolve(mut resolver: Resolver) -> Entry {
+        Entry::Other(Other {
+            cite: resolver.cite().to_string(),
+            kind: resolver.target.to_string(),
+            title: resolver.fields.remove("title").unwrap(),
+            optional: resolver.fields,
+        })
+    }
+    /// Returns the [`Field`]s of the entry.
+    ///
+    /// The fields returned include the required and optional fields in no particular
+    /// order.
+    #[must_use]
+    pub fn fields(&self) -> Vec<Field<'_, '_>> {
+        let field = tuple_to_field(("title", &self.title));
+        let mut fields = vec![field];
+        fields.extend(self.optional.iter().map(|(k, v)| tuple_to_field((k, v))));
+        fields
+    }
+    /// Searches for a field value that matches the `name` given.
+    ///
+    /// [`Self::find_field`] returns `Some(&QuotedString)` when a matching field is found
+    /// and the return is the value of that matching field, returns `None` when no field
+    /// matches the `name`.
+    #[must_use]
+    pub fn find_field(&self, name: &str) -> Option<&QuotedString> {
+        let normal_name = name.to_lowercase();
+        match normal_name.as_str() {
+            "title" => Some(&self.title),
+            s => self.optional.get(s),
+        }
+    }
+}
+
+impl FieldQuery for Other {
+    fn get_field(&self, name: &str) -> Option<&QuotedString> {
+        self.find_field(name)
     }
 }
 
@@ -370,12 +447,6 @@ entry_impl! {
             school,
             /// Year the paper was published.
             year
-        ),
-    other:
-        /// Any other resource not supported by other entry variants.
-        Other(
-            /// Title of the resource.
-            title
         ),
     proceedings:
         /// A conference proceeding.

@@ -58,7 +58,7 @@ impl Format for BibTex {
     }
 }
 
-const fn compose_variant(entry: &ast::Entry) -> &'static str {
+fn compose_variant(entry: &ast::Entry) -> &str {
     match entry {
         ast::Entry::Article(_) => "article",
         ast::Entry::Book(_) => "book",
@@ -69,7 +69,7 @@ const fn compose_variant(entry: &ast::Entry) -> &'static str {
         ast::Entry::Manual(_) => "manual",
         ast::Entry::MasterThesis(_) => "masterthesis",
         ast::Entry::PhdThesis(_) => "phdthesis",
-        ast::Entry::Other(_) => "misc",
+        ast::Entry::Other(data) => data.kind(), //"misc",
         ast::Entry::Proceedings(_) => "proceedings",
         ast::Entry::TechReport(_) => "techreport",
         ast::Entry::Unpublished(_) => "unpublished",
@@ -102,7 +102,7 @@ impl From<biblatex::Entry> for ast::Resolver {
             mut fields,
         } = entry;
 
-        let mut resolver = match entry_type {
+        let mut resolver = match entry_type.to_bibtex() {
             biblatex::EntryType::Article => ast::Article::resolver_with_cite(cite),
             biblatex::EntryType::Book => ast::Book::resolver_with_cite(cite),
             biblatex::EntryType::Booklet => ast::Booklet::resolver_with_cite(cite),
@@ -114,7 +114,12 @@ impl From<biblatex::Entry> for ast::Resolver {
             biblatex::EntryType::TechReport | biblatex::EntryType::Report => {
                 ast::TechReport::resolver_with_cite(cite)
             }
-            _ => ast::Other::resolver_with_cite(cite),
+            biblatex::EntryType::InBook | biblatex::EntryType::SuppBook => {
+                ast::BookSection::resolver_with_cite(cite)
+            }
+            biblatex::EntryType::Proceedings => ast::Proceedings::resolver_with_cite(cite),
+            biblatex::EntryType::Unpublished => ast::Unpublished::resolver_with_cite(cite),
+            s => ast::Other::resolver_with_cite(cite, s.to_string()),
         };
 
         for (name, value) in fields.drain() {
