@@ -29,6 +29,7 @@ use super::Entry;
 /// ```
 ///
 #[derive(Debug)]
+#[cfg_attr(test, derive(Clone, PartialEq))]
 pub struct Resolver {
     pub(super) target: Cow<'static, str>,
     pub(super) cite: Option<String>,
