@@ -217,6 +217,18 @@ impl QuotedString {
     }
 }
 
+impl From<&str> for QuotedString {
+    fn from(s: &str) -> Self {
+        QuotedString::new(s.to_owned())
+    }
+}
+
+impl From<String> for QuotedString {
+    fn from(s: String) -> Self {
+        QuotedString::new(s)
+    }
+}
+
 /// A char escape pattern.
 ///
 /// A [`EscapePattern`] expresses that the implementing type can be used as a escape pattern for

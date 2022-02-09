@@ -280,7 +280,7 @@ mod tests {
             "{Quicksort}: A Fast Sorting Scheme in Theory and Practice",
             &square_quote,
         );
-        let value = QuotedString::new("test".to_owned());
+        let value = "test".into();
         let mut optional = HashMap::new();
         optional.insert("doi".to_owned(), value);
         let entry = Entry::Manual(Manual {
