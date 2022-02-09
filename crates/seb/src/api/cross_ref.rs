@@ -9,29 +9,12 @@ use crate::{
 
 use super::Client;
 
-macro_rules! crossref_url {
-    ($doi: ident) => {
-        format!(
-            "https://api.crossref.org/works/{}/transform/application/x-bibtex",
-            $doi
-        )
-    };
-}
-
 #[inline]
 pub(crate) fn get_entries_by_doi<C: Client>(
     doi: &str,
 ) -> Result<Result<Biblio, BiblioResolver>, Error> {
-    format_api::get_entry_by_url::<C, BibTex>(&crossref_url!(doi))
-}
-
-#[test]
-fn crossref_url_macro_adds_doi_in_place() {
-    let doi = "balloons";
-    assert_eq!(
-        "https://api.crossref.org/works/balloons/transform/application/x-bibtex",
-        crossref_url!(doi)
-    );
+    let url = format!("https://api.crossref.org/works/{doi}/transform/application/x-bibtex");
+    format_api::get_entry_by_url::<C, BibTex>(&url)
 }
 
 #[derive(Deserialize)]
@@ -78,13 +61,19 @@ pub(crate) fn get_entry_stubs_by_title<C: Client>(
 #[cfg(test)]
 mod test {
     use crate::{
-        api::{impl_text_producer, MockJsonClient},
+        api::{assert_url, impl_text_producer, MockClient},
         ErrorKind,
     };
 
     use super::QueryResult;
 
     const ENTRY_STUB_JSON: &str = include_str!("../../../../tests/data/crossref_entry_stub.json");
+
+    #[test]
+    fn by_doi_url_format_is_correct() {
+        assert!(super::get_entries_by_doi::<MockClient>("balloons").is_err());
+        assert_url!("https://api.crossref.org/works/balloons/transform/application/x-bibtex");
+    }
 
     #[test]
     fn json_can_be_deserialized_to_query_result() {
@@ -105,15 +94,24 @@ mod test {
 
     #[test]
     fn valid_json_produces_resolved_biblio() {
-        let res = super::get_entry_stubs_by_title::<MockJsonClient<ValidJsonProducer>>("test")
+        let res = super::get_entry_stubs_by_title::<MockClient<ValidJsonProducer>>("test")
             .expect("ValidJsonProducer always produces a valid json String to be deserialized");
 
         assert_eq!(20, res.len());
     }
 
+    type EmptyItemClient = MockClient<EmptyItemProducer>;
+
+    #[test]
+    fn by_title_url_format_is_correct() {
+        assert!(super::get_entry_stubs_by_title::<EmptyItemClient>("My test title").is_err());
+        // Not expecting percent encoding here, the str to URL conversion will do this.
+        assert_url!("https://api.crossref.org/works?query.title=My test title&select=DOI,title");
+    }
+
     #[test]
     fn empty_item_returns_no_value_error() {
-        let res = super::get_entry_stubs_by_title::<MockJsonClient<EmptyItemProducer>>("test")
+        let res = super::get_entry_stubs_by_title::<EmptyItemClient>("test")
             .expect_err("EmptyItemProducer returns an Err");
 
         assert_eq!(ErrorKind::NoValue, res.kind());

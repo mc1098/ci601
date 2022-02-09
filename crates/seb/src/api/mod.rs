@@ -45,14 +45,43 @@ impl Client for reqwest::blocking::Client {
 
 #[cfg(test)]
 pub(crate) use test::{
-    impl_text_producer, MockJsonClient, MockTextClient, NetworkErrorProducer, Producer,
+    assert_url, impl_text_producer, MockClient, NetworkErrorProducer, Producer, URL_SINK,
 };
 
 use crate::{Error, ErrorKind};
 
 #[cfg(test)]
 mod test {
+
     use super::*;
+
+    thread_local! {
+        pub(crate) static URL_SINK: std::cell::RefCell<Option<String>> = std::cell::RefCell::new(None);
+    }
+
+    /// Asserts that the expected URL is the same as the one provided to the [`MockClient`].
+    ///
+    /// The [`MockClient`] will update the static thread local `URL_SINK` with the URL string that
+    /// was passed to it, this allows for asserting that implementing functions or methods are
+    /// parsing the correct URL.
+    ///
+    /// This macro provides a shortcut alternative to the following:
+    ///
+    /// ```ignore
+    /// // .. test code including `MockClient`
+    ///
+    /// let url = crate::api::URL_SINK.with(|url| url.borrow().clone().unwrap_or_default());
+    /// assert_eq!("expected url here", url);
+    /// ```
+    macro_rules! assert_url {
+        ($expected: expr) => {
+            assert_url!($expected, "");
+        };
+        ($expected: expr, $($arg: tt)+) => {
+            let url = crate::api::URL_SINK.with(|url| url.borrow().clone().unwrap_or_default());
+            assert_eq!($expected, url, $($arg)+);
+        };
+    }
 
     pub(crate) trait Producer<T>
     where
@@ -62,18 +91,24 @@ mod test {
     }
 
     #[derive(Default)]
-    pub(crate) struct MockTextClient<P: Producer<String>>(std::marker::PhantomData<P>);
+    pub(crate) struct MockClient<P: Producer<String> = EmptyTextProducer> {
+        _producer: std::marker::PhantomData<P>,
+    }
 
-    impl<P: Producer<String>> Client for MockTextClient<P> {
-        fn get_text(&self, _: &str) -> Result<String, Error> {
+    impl<P: Producer<String>> Client for MockClient<P> {
+        fn get_text(&self, url: &str) -> Result<String, Error> {
+            URL_SINK.with(|sink| *sink.borrow_mut() = Some(url.to_owned()));
             P::produce()
         }
 
-        fn get_json<T>(&self, _: &str) -> Result<T, Error>
+        fn get_json<T>(&self, url: &str) -> Result<T, Error>
         where
-            T: serde::de::DeserializeOwned,
+            T: DeserializeOwned,
         {
-            unimplemented!("Not required")
+            URL_SINK.with(|sink| *sink.borrow_mut() = Some(url.to_owned()));
+            P::produce().and_then(|json| {
+                serde_json::from_str(&json).map_err(|e| Error::wrap(ErrorKind::Deserialize, e))
+            })
         }
     }
 
@@ -92,26 +127,10 @@ mod test {
         };
     }
     impl_text_producer! {
+        EmptyTextProducer => Ok("".to_owned()),
         NetworkErrorProducer => Err(Error::new(ErrorKind::IO, "Network error")),
     }
 
+    pub(crate) use assert_url;
     pub(crate) use impl_text_producer;
-
-    #[derive(Default)]
-    pub(crate) struct MockJsonClient<P: Producer<String>>(std::marker::PhantomData<P>);
-
-    impl<P: Producer<String>> Client for MockJsonClient<P> {
-        fn get_text(&self, _: &str) -> Result<String, Error> {
-            unimplemented!("Not required")
-        }
-
-        fn get_json<T>(&self, _: &str) -> Result<T, Error>
-        where
-            T: serde::de::DeserializeOwned,
-        {
-            P::produce().and_then(|s| {
-                serde_json::from_str(&s).map_err(|e| Error::wrap(ErrorKind::Deserialize, e))
-            })
-        }
-    }
 }

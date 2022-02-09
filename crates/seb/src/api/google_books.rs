@@ -156,7 +156,7 @@ impl TryFrom<Book> for Entry {
 mod tests {
     use super::{GoogleModel, Item, VolumeInfo};
     use crate::{
-        api::{impl_text_producer, MockJsonClient},
+        api::{assert_url, impl_text_producer, MockClient},
         ast::{self, FieldQuery},
     };
 
@@ -167,8 +167,23 @@ mod tests {
     }
 
     #[test]
+    fn isbn_10_url_is_format_is_correct() {
+        assert!(super::get_entries_by_isbn::<MockClient<ValidJsonProducer>>("0735619670").is_ok());
+        assert_url!("https://www.googleapis.com/books/v1/volumes?q=isbn:0735619670");
+    }
+
+    #[test]
+    fn isbn_13_url_is_format_is_correct() {
+        assert!(
+            super::get_entries_by_isbn::<MockClient<ValidJsonProducer>>("978-0380815937").is_ok()
+        );
+        // should strip the hypen in a ISBN-13 string
+        assert_url!("https://www.googleapis.com/books/v1/volumes?q=isbn:9780380815937");
+    }
+
+    #[test]
     fn valid_json_produces_resolved_biblio() {
-        let res = super::get_entries_by_isbn::<MockJsonClient<ValidJsonProducer>>("test")
+        let res = super::get_entries_by_isbn::<MockClient<ValidJsonProducer>>("test")
             .expect("ValidJsonProducer always produces a valid json String to be deserialized");
 
         res.expect("Should produce a resolved Biblio");
