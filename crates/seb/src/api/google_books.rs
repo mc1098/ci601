@@ -1,10 +1,8 @@
-use std::collections::HashMap;
-
 use log::{info, trace};
 use serde::Deserialize;
 
 use crate::{
-    ast::{self, Biblio, BiblioResolver, Entry},
+    ast::{self, Biblio, BiblioResolver, Resolver},
     Error, ErrorKind,
 };
 
@@ -18,13 +16,14 @@ pub(crate) fn get_entries_by_isbn<C: Client>(
     // remove hypen from ISBN-13 (if applicable)
     let isbn = isbn.replace('-', "");
     get_book_info::<C>(&isbn)
-        .and_then(Entry::try_from)
+        .and_then(Resolver::try_from)
         .map(|e| vec![e])
-        .map(|entries| Ok(Biblio::new(entries)))
+        .map(Biblio::try_resolve)
+    //.map(|entries| Ok(Biblio::new(entries)))
 }
 
 pub(crate) fn get_book_info<C: Client>(isbn: &str) -> Result<Book, Error> {
-    info!("Searching for ISBN '{}' using Google Books API", isbn);
+    info!("Searching for ISBN '{isbn}' using Google Books API");
     let mut url = GOOGLE_BOOKS_URL.to_owned();
     url.push_str(isbn);
 
@@ -84,7 +83,7 @@ impl Item {
     }
 }
 
-impl TryFrom<Book> for Entry {
+impl TryFrom<Book> for Resolver {
     type Error = Error;
 
     fn try_from(book: Book) -> Result<Self, Error> {
@@ -93,18 +92,21 @@ impl TryFrom<Book> for Entry {
             isbn,
             volume_info:
                 VolumeInfo {
-                    authors,
+                    mut authors,
                     title,
                     publisher,
                     published_date,
                 },
         } = book;
 
+        let mut resolver = ast::Book::resolver();
+
         // date_parts = Year-Month-Day, where Day is not often used.
         let mut date_parts = published_date.split('-');
 
         let year = date_parts
             .next()
+            .filter(|s| s.parse::<u16>().is_ok())
             .ok_or_else(|| {
                 Error::new(
                     ErrorKind::Deserialize,
@@ -113,42 +115,26 @@ impl TryFrom<Book> for Entry {
             })?
             .to_owned();
 
-        let month = date_parts.next();
+        resolver.year(ast::QuotedString::new(year));
 
-        // create citation_key based on first author + year.
-        let mut cite = authors
-            .get(0)
-            .cloned()
-            .map(|mut s| {
-                s.retain(|c| !c.is_whitespace());
-                s
-            })
-            .ok_or_else(|| {
-                Error::new(
-                    ErrorKind::Deserialize,
-                    "No authors found from resource response",
-                )
-            })?;
-        cite.push_str(&year);
+        if let Some(month) = date_parts.next().filter(|s| s.parse::<u16>().is_ok()) {
+            resolver.set_field("month", ast::QuotedString::new(month.to_owned()));
+        }
 
         let title = ast::QuotedString::new(title);
 
-        let mut optional = HashMap::from([("isbn".to_owned(), ast::QuotedString::new(isbn))]);
+        resolver.title(title);
 
-        if let Some(month) = month {
-            optional.insert("month".to_owned(), ast::QuotedString::new(month.to_owned()));
+        authors.retain(|author| !author.is_empty());
+
+        if !authors.is_empty() {
+            resolver.author(ast::QuotedString::new(authors.join(",")));
         }
 
-        let data = ast::Book {
-            cite,
-            author: ast::QuotedString::new(authors.join(",")),
-            title,
-            publisher: ast::QuotedString::new(publisher),
-            year: ast::QuotedString::new(year),
-            optional,
-        };
+        resolver.publisher(ast::QuotedString::new(publisher));
+        resolver.set_field("isbn", ast::QuotedString::new(isbn));
 
-        Ok(Self::Book(data))
+        Ok(resolver)
     }
 }
 
@@ -157,13 +143,29 @@ mod tests {
     use super::{GoogleModel, Item, VolumeInfo};
     use crate::{
         api::{assert_url, impl_text_producer, MockClient},
-        ast::{self, FieldQuery},
+        ast::{self, FieldQuery, Resolver},
+        Error, ErrorKind,
     };
 
     const GOOGLE_BOOK_JSON: &str = include_str!("../../../../tests/data/google_book_json.txt");
 
     impl_text_producer! {
         ValidJsonProducer => Ok(GOOGLE_BOOK_JSON.to_owned()),
+        EmptyBookProducer => Ok(
+            r#"{
+                "items": []
+            }"#.to_owned()
+        ),
+    }
+
+    #[test]
+    #[should_panic(expected = "No books found!")]
+    fn no_items_in_json_returns_err_no_value() {
+        let err = super::get_entries_by_isbn::<MockClient<EmptyBookProducer>>(&String::default());
+        let kind = err.as_ref().map_err(Error::kind).map(|_| ());
+
+        assert_eq!(Err(ErrorKind::NoValue), kind, "{:?}", err);
+        drop(err.unwrap());
     }
 
     #[test]
@@ -190,6 +192,30 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(
+        expected = "Date format was different then expected - aborting to avoid invalid dates in entry"
+    )]
+    fn invalid_date_format_returns_deserialize_error() {
+        let ignore = "Ignore".to_owned();
+        let item = Item {
+            volume_info: VolumeInfo {
+                authors: vec![ignore.clone()],
+                title: ignore.clone(),
+                publisher: ignore.clone(),
+                published_date: "2022@apples".to_owned(),
+            },
+        };
+
+        let book = item.build(ignore);
+        let err = Resolver::try_from(book);
+
+        let kind = err.as_ref().map(|_| ()).map_err(Error::kind);
+
+        assert_eq!(Err(ErrorKind::Deserialize), kind);
+        drop(err.unwrap());
+    }
+
+    #[test]
     fn published_date_with_year_and_month_parsed_correctly() {
         let item = Item {
             volume_info: VolumeInfo {
@@ -201,8 +227,9 @@ mod tests {
         };
 
         let book = item.build("Ignore".to_owned());
-        let entry: ast::Entry = book
-            .try_into()
+        let entry: ast::Entry = Resolver::try_from(book)
+            .expect("Book is valid so will return a resolver")
+            .resolve()
             .expect("Book should not fail to convert into an entry");
 
         assert_eq!(
