@@ -1,7 +1,7 @@
 use crate::{
     ast::{Biblio, BiblioResolver},
     format::Format,
-    Error,
+    Error, ErrorKind,
 };
 
 use super::Client;
@@ -11,14 +11,26 @@ pub(crate) fn get_entry_by_url<C: Client, F: Format>(
 ) -> Result<Result<Biblio, BiblioResolver>, Error> {
     let client = C::default();
 
-    client.get_text(url).map(F::new).and_then(Format::parse)
+    client
+        .get_text(url)
+        .and_then(|text| {
+            if text.is_empty() {
+                Err(Error::new(
+                    ErrorKind::NoValue,
+                    "Request did not find any results",
+                ))
+            } else {
+                Ok(F::new(text))
+            }
+        })
+        .and_then(Format::parse)
 }
 
 #[cfg(test)]
 mod tests {
 
     use crate::{
-        api::{impl_text_producer, MockTextClient, NetworkErrorProducer},
+        api::{impl_text_producer, MockClient, NetworkErrorProducer},
         format::BibTex,
         ErrorKind,
     };
@@ -33,7 +45,7 @@ mod tests {
 
     #[test]
     fn client_text_error() {
-        let err = get_entry_by_url::<MockTextClient<NetworkErrorProducer>, BibTex>("test")
+        let err = get_entry_by_url::<MockClient<NetworkErrorProducer>, BibTex>("test")
             .expect_err("MockErrorClient should always cause an error");
 
         assert_eq!(ErrorKind::IO, err.kind());
@@ -41,7 +53,7 @@ mod tests {
 
     #[test]
     fn client_text_parse_error() {
-        let err = get_entry_by_url::<MockTextClient<NotBibTexProducer>, BibTex>("test")
+        let err = get_entry_by_url::<MockClient<NotBibTexProducer>, BibTex>("test")
             .expect_err("MockErrorClient should always cause an error");
 
         assert_eq!(ErrorKind::Deserialize, err.kind());
@@ -50,7 +62,7 @@ mod tests {
     #[test]
     fn valid_and_incomplete_entry_returns_resolver() {
         let should_be_resolver =
-            get_entry_by_url::<MockTextClient<ValidIncompleteEntryProducer>, BibTex>("test")
+            get_entry_by_url::<MockClient<ValidIncompleteEntryProducer>, BibTex>("test")
                 .expect("ValidIncompleteEntryProducer should always produce an ok response");
 
         let mut resolver = should_be_resolver
@@ -67,7 +79,7 @@ mod tests {
     #[test]
     fn valid_and_complete_entry_returns_biblio() {
         let should_be_biblio =
-            get_entry_by_url::<MockTextClient<ValidCompleteEntryProducer>, BibTex>("test")
+            get_entry_by_url::<MockClient<ValidCompleteEntryProducer>, BibTex>("test")
                 .expect("ValidCompleteEntryProducer should always produce an ok response");
 
         let biblio = should_be_biblio
