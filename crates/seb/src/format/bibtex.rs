@@ -234,6 +234,18 @@ mod tests {
     }
 
     #[test]
+    fn parsing_an_empty_string_returns_an_empty_biblio() {
+        let bibtex = BibTex::new(String::new());
+
+        let biblio = bibtex
+            .parse()
+            .expect("Empty string is a valid BibTeX")
+            .expect("Empty string is trivially resolved");
+
+        assert_eq!(Vec::<crate::ast::Entry>::new(), biblio.into_entries());
+    }
+
+    #[test]
     fn biblatex_verbatim_chunk_escape_is_corrected() {
         use biblatex::Chunk::{Normal, Verbatim};
         // This test is for the real use case when adding using ietf as the title field is often

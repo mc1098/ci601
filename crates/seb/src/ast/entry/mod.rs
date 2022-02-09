@@ -224,6 +224,27 @@ macro_rules! entry_impl {
                 }
 
                 #[test]
+                fn resolver_override_cite() {
+                    use std::collections::VecDeque;
+
+                    let mut resolver = $target::resolver_with_cite("old");
+                    let mut required: VecDeque<_> = [$(stringify!($req),)+].into_iter().collect();
+
+                    let iter = std::iter::from_fn(move || required.pop_front());
+                    let iter = iter.zip(('a'..).into_iter());
+
+                    for (field, c) in iter {
+                        resolver.set_field(field, c.to_string());
+                    }
+                    let res = resolver.resolve();
+                    let mut entry = res.expect("All required fields added so should have built correctly");
+
+                    assert_eq!("old", entry.cite());
+                    entry.set_cite("new".to_owned());
+                    assert_eq!("new", entry.cite());
+                }
+
+                #[test]
                 fn resolver_only_returns_ok_when_all_required_fields_set() {
                     use std::collections::VecDeque;
 
