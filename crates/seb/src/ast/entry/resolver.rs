@@ -20,7 +20,7 @@ use super::Entry;
 /// assert_eq!(&["title"][..], resolver.required_fields().collect::<Vec<_>>());
 ///
 /// let mut resolver = resolver.resolve().expect_err("The required title field is not set");
-/// resolver.set_field("title", QuotedString::new("My manual".to_owned()));
+/// resolver.set_field("title", "My manual");
 ///
 /// let entry = resolver.resolve().expect("All required fields have now been set so this is valid");
 ///
@@ -138,10 +138,18 @@ impl Resolver {
     /// When the field is set multiple times the last value is used when resolveing the [`Entry`] type.
     /// The `name` of the field is always transformed into the lowercase internally before setting
     /// the field so users of this API don't need to do this.
+    ///
+    /// The `value` parameter accepts `Into<QuotedString>` types and for `&str` and
+    /// `String` this is equivalent to using [`ast::QuotedString::new`] so make sure that
+    /// quoting is not required, if it is then use either [`ast::QuotedString::quote`] or
+    /// [`ast::QuotedString::from_quoted`]
     #[inline]
-    pub fn set_field(&mut self, name: &str, value: QuotedString) {
+    pub fn set_field<I>(&mut self, name: &str, value: I)
+    where
+        I: Into<QuotedString>,
+    {
         // normalize fields to lowercase
-        self.set_normalized_field(name.to_lowercase(), value);
+        self.set_normalized_field(name.to_lowercase(), value.into());
     }
 
     /// Set a normalized (lowercase name) field.
@@ -231,9 +239,16 @@ macro_rules! impl_resolver {
                 ///
                 /// This method is equivalent to using the [`Resolver::set_field`] method with the
                 /// field name and value.
+                ///
+                /// The `value` parameter accepts `Into<QuotedString>` types and for `&str` and
+                /// `String` this is equivalent to using [`ast::QuotedString::new`] so make sure that
+                /// quoting is not required, if it is then use either [`ast::QuotedString::quote`] or
+                /// [`ast::QuotedString::from_quoted`]
                 #[inline]
-                pub fn $field(&mut self, value: QuotedString) {
-                    self.set_normalized_field(stringify!($field).to_owned(), value);
+                pub fn $field<I>(&mut self, value: I)
+                    where I: Into<QuotedString>,
+                {
+                    self.set_normalized_field(stringify!($field).to_owned(), value.into());
                 }
             )*
         }
@@ -255,7 +270,7 @@ impl_resolver!(
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{Manual, QuotedString};
+    use crate::ast::Manual;
 
     #[test]
     fn resolver_entry_drop_reinserts_required_field() {
@@ -283,7 +298,7 @@ mod tests {
             .next_required_entry()
             .expect("Manual resolver requires a title field");
         // insert consumes self and the required title field has been removed from the resolver.
-        entry.insert(QuotedString::new("test".to_owned()));
+        entry.insert("test".into());
 
         assert!(
             resolver.next_required_entry().is_none(),

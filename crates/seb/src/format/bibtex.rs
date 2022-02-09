@@ -124,9 +124,9 @@ impl From<biblatex::Entry> for ast::Resolver {
 
         for (name, value) in fields.drain() {
             if name == "booktitle" {
-                resolver.book_title(value.into());
+                resolver.book_title(value);
             } else {
-                resolver.set_field(&name, value.into());
+                resolver.set_field(&name, value);
             }
         }
 
@@ -221,15 +221,15 @@ mod tests {
     fn fields() -> Vec<ast::Field<'static, 'static>> {
         vec![ast::Field {
             name: Cow::Borrowed("author"),
-            value: Cow::Owned(QuotedString::new("Me".to_owned())),
+            value: Cow::Owned("Me".into()),
         }]
     }
 
     fn entries() -> Vec<ast::Entry> {
         vec![ast::Entry::Manual(ast::Manual {
             cite: "entry1".to_owned(),
-            title: QuotedString::new("Test".to_owned()),
-            optional: HashMap::from([("author".to_owned(), QuotedString::new("Me".to_owned()))]),
+            title: "Test".into(),
+            optional: HashMap::from([("author".to_owned(), "Me".into())]),
         })]
     }
 
@@ -297,7 +297,7 @@ mod tests {
     fn book_title_in_bibtex_should_be_booktitle() {
         let result = compose_fields(&[ast::Field {
             name: Cow::Borrowed("book_title"),
-            value: Cow::Owned(QuotedString::new("value".to_owned())),
+            value: Cow::Owned("value".into()),
         }]);
 
         assert_eq!("    booktitle = {value},\n", result);

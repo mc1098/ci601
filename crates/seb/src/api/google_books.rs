@@ -19,7 +19,6 @@ pub(crate) fn get_entries_by_isbn<C: Client>(
         .and_then(Resolver::try_from)
         .map(|e| vec![e])
         .map(Biblio::try_resolve)
-    //.map(|entries| Ok(Biblio::new(entries)))
 }
 
 pub(crate) fn get_book_info<C: Client>(isbn: &str) -> Result<Book, Error> {
@@ -115,24 +114,22 @@ impl TryFrom<Book> for Resolver {
             })?
             .to_owned();
 
-        resolver.year(ast::QuotedString::new(year));
+        resolver.year(year);
 
         if let Some(month) = date_parts.next().filter(|s| s.parse::<u16>().is_ok()) {
-            resolver.set_field("month", ast::QuotedString::new(month.to_owned()));
+            resolver.set_field("month", month);
         }
-
-        let title = ast::QuotedString::new(title);
 
         resolver.title(title);
 
         authors.retain(|author| !author.is_empty());
 
         if !authors.is_empty() {
-            resolver.author(ast::QuotedString::new(authors.join(",")));
+            resolver.author(authors.join(","));
         }
 
-        resolver.publisher(ast::QuotedString::new(publisher));
-        resolver.set_field("isbn", ast::QuotedString::new(isbn));
+        resolver.publisher(publisher);
+        resolver.set_field("isbn", isbn);
 
         Ok(resolver)
     }

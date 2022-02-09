@@ -238,9 +238,9 @@ macro_rules! entry_impl {
                             .resolve()
                             .expect_err("Resolver should not resolve correctly without required fields");
 
-                        resolver.set_field(field, QuotedString::new(c.to_string()));
+                        resolver.set_field(field, c.to_string());
                     }
-                    resolver.set_field("test", QuotedString::new("value".to_owned()));
+                    resolver.set_field("test", "value");
                     let res = resolver.resolve();
                     let entry = res.expect("All required fields added so should have built correctly");
 
