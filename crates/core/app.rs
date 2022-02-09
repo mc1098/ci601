@@ -23,7 +23,8 @@ fn select_from_resolver(
     mut resolver: BiblioResolver,
 ) -> eyre::Result<Result<Entry, EntryResolver>> {
     let items = resolver
-        .map_iter_all(|fq| {
+        .iter()
+        .map(|fq| {
             fq.get_field("title")
                 .map_or_else(|| "No title".to_owned(), |qs| qs.to_string())
         })
