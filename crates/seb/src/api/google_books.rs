@@ -15,16 +15,16 @@ pub(crate) fn get_entries_by_isbn<C: Client>(
 ) -> Result<std::result::Result<Biblio, BiblioResolver>, Error> {
     // remove hypen from ISBN-13 (if applicable)
     let isbn = isbn.replace('-', "");
-    get_book_info::<C>(&isbn)
+    get_book_info::<C>(isbn)
         .and_then(Resolver::try_from)
         .map(|e| vec![e])
         .map(Biblio::try_resolve)
 }
 
-pub(crate) fn get_book_info<C: Client>(isbn: &str) -> Result<Book, Error> {
+pub(crate) fn get_book_info<C: Client>(isbn: String) -> Result<Book, Error> {
     info!("Searching for ISBN '{isbn}' using Google Books API");
     let mut url = GOOGLE_BOOKS_URL.to_owned();
-    url.push_str(isbn);
+    url.push_str(&isbn);
 
     let client = C::default();
     let GoogleModel { mut items } = client.get_json(&url)?;
@@ -36,7 +36,7 @@ pub(crate) fn get_book_info<C: Client>(isbn: &str) -> Result<Book, Error> {
         .next()
         .ok_or_else(|| Error::new(ErrorKind::NoValue, "No books found!"))?;
 
-    Ok(resolver.build(isbn.to_owned()))
+    Ok(resolver.build(isbn))
 }
 
 #[derive(Deserialize)]
@@ -185,7 +185,15 @@ mod tests {
         let res = super::get_entries_by_isbn::<MockClient<ValidJsonProducer>>("test")
             .expect("ValidJsonProducer always produces a valid json String to be deserialized");
 
-        res.expect("Should produce a resolved Biblio");
+        let biblio = res.expect("Should produce a resolved Biblio");
+
+        let entry = biblio
+            .into_entries()
+            .pop()
+            .expect("Valid json should produce a single entry");
+
+        assert_eq!("test", &**entry.get_field("isbn").unwrap());
+        assert!(matches!(entry, crate::ast::Entry::Book(_)));
     }
 
     #[test]
