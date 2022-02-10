@@ -250,7 +250,7 @@ mod tests {
     #[test]
     fn read_bib_file_as_bibliograph() {
         // bibtex1 only contains a single bibtex entry so only check equality for one entry
-        let bibtex = include_str!("../../tests/data/bibtex1.bib");
+        let bibtex = include_str!("../../seb-lib/tests/data/bibtex1.bib");
         let expected = BibTex::new(bibtex.to_owned())
             .parse()
             .unwrap()
@@ -259,8 +259,11 @@ mod tests {
             .pop()
             .unwrap();
 
-        let file = std::fs::File::open("./tests/data/bibtex1.bib")
-            .expect("Cannot open ./tests/data/bibtex1.bib file for test");
+        dbg!(&bibtex);
+
+        let file = std::fs::File::open("../seb-lib/tests/data/bibtex1.bib")
+            .expect("Cannot open ../seb-lib/tests/data/bibtex1.bib file for test");
+
         let mut file: FormatFile<BibTex> = FormatFile::new(file);
 
         let biblio = file.read_ast().unwrap().unwrap();

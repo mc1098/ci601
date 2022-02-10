@@ -144,7 +144,7 @@ mod tests {
         Error, ErrorKind,
     };
 
-    const GOOGLE_BOOK_JSON: &str = include_str!("../../../../tests/data/google_book_json.txt");
+    const GOOGLE_BOOK_JSON: &str = include_str!("../../tests/data/google_book_json.txt");
 
     impl_text_producer! {
         ValidJsonProducer => Ok(GOOGLE_BOOK_JSON.to_owned()),
