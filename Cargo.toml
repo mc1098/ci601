@@ -1,30 +1,5 @@
-[package]
-name = "seb_cli"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-clap = { version = "3.0", features = ["derive"] }
-eyre = "0.6.5"
-glob = "0.3"
-log = "0.4.14"
-stderrlog = "0.5.1"
-seb = { path = "crates/seb" }
-dialoguer = "0.9.0"
-
-[dev-dependencies]
-assert_cmd = "2.0.2"
-assert_fs = "1.0.6"
-
-
-[[bin]]
-bench = false
-path = "crates/core/main.rs"
-name = "seb"
-
 [workspace]
 members = [
-  "crates/seb",
+  "seb-cli",
+  "seb-lib"
 ]
-
-[features]

@@ -67,7 +67,7 @@ mod test {
 
     use super::QueryResult;
 
-    const ENTRY_STUB_JSON: &str = include_str!("../../../../tests/data/crossref_entry_stub.json");
+    const ENTRY_STUB_JSON: &str = include_str!("../../tests/data/crossref_entry_stub.json");
 
     #[test]
     fn by_doi_url_format_is_correct() {
