@@ -102,13 +102,14 @@ impl From<biblatex::EntryType> for ast::EntryKind<'static> {
             EntryType::Article => EntryKind::Article,
             EntryType::Book => EntryKind::Book,
             EntryType::Booklet => EntryKind::Booklet,
-            EntryType::InCollection => EntryKind::BookSection,
+            EntryType::InCollection | EntryType::InBook | EntryType::SuppBook => {
+                EntryKind::BookSection
+            }
             EntryType::InProceedings => EntryKind::InProceedings,
             EntryType::Manual => EntryKind::Manual,
             EntryType::MastersThesis => EntryKind::MasterThesis,
             EntryType::PhdThesis => EntryKind::PhdThesis,
             EntryType::TechReport | EntryType::Report => EntryKind::TechReport,
-            EntryType::InBook | EntryType::SuppBook => EntryKind::BookSection,
             EntryType::Proceedings => EntryKind::Proceedings,
             EntryType::Unpublished => EntryKind::Unpublished,
             s => EntryKind::Other(std::borrow::Cow::Owned(s.to_string())),
