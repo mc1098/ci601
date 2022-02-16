@@ -6,7 +6,7 @@ use std::marker::PhantomData;
 mod bibtex;
 
 use crate::{
-    ast::{Biblio, BiblioResolver},
+    ast::{Biblio, BiblioResolver, Entry},
     Error,
 };
 pub use bibtex::BibTex;
@@ -36,7 +36,13 @@ pub trait Format {
     ///
     /// This function should not fail as every [`Biblio`] instance must be valid and every
     /// [`Format`] must correctly represent every valid [`Biblio`].
-    fn compose(ast: Biblio) -> Self;
+    fn compose(biblio: &Biblio) -> Self;
+
+    /// Composes a [`Entry`] to a [`String`].
+    ///
+    /// This function should not fail fail as every [`Entry`] instance must be valid and every
+    /// [`Format`] must correctly represent every valid [`Entry`].
+    fn compose_entry(entry: &Entry) -> String;
 
     /// The current [`Format`] in a raw [`String`].
     ///
@@ -84,7 +90,7 @@ pub trait Writer {
     /// The call to write should only return an [`Err`] when writing to the writer cannot be
     /// completed.
     fn write_ast(&mut self, ast: Biblio) -> Result<(), Error> {
-        let format = Self::Format::compose(ast);
+        let format = Self::Format::compose(&ast);
         self.write(format)
     }
 }

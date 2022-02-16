@@ -30,19 +30,21 @@ impl Format for BibTex {
         Ok(Biblio::try_resolve(entries))
     }
 
-    fn compose(ast: Biblio) -> Self {
-        let s = ast
+    fn compose(biblio: &Biblio) -> Self {
+        let s = biblio
             .entries()
-            .map(|entry| {
-                format!(
-                    "@{}{{{},\n{}}}\n",
-                    compose_variant(entry),
-                    entry.cite(),
-                    compose_fields(&entry.fields())
-                )
-            })
+            .map(Self::compose_entry)
             .collect::<String>();
         Self(s)
+    }
+
+    fn compose_entry(entry: &ast::Entry) -> String {
+        format!(
+            "@{}{{{},\n{}}}\n",
+            compose_variant(entry),
+            entry.cite(),
+            compose_fields(&entry.fields())
+        )
     }
 
     fn raw(self) -> String {
@@ -69,7 +71,7 @@ fn compose_variant(entry: &ast::Entry) -> &str {
         ast::Entry::Manual(_) => "manual",
         ast::Entry::MasterThesis(_) => "masterthesis",
         ast::Entry::PhdThesis(_) => "phdthesis",
-        ast::Entry::Other(data) => data.kind(), //"misc",
+        ast::Entry::Other(data) => data.kind(),
         ast::Entry::Proceedings(_) => "proceedings",
         ast::Entry::TechReport(_) => "techreport",
         ast::Entry::Unpublished(_) => "unpublished",
@@ -293,7 +295,7 @@ mod tests {
             .unwrap()
             .expect("bibtex1.bib is a valid bibtex entry");
 
-        let composed = BibTex::compose(parsed.clone());
+        let composed = BibTex::compose(&parsed);
 
         // we don't want to compare bibtex_str with composed raw as they can be different
         let parsed_two = composed
@@ -337,7 +339,7 @@ mod tests {
     #[test]
     fn compose_to_bibtex() {
         let references = Biblio::new(entries().drain(..1).collect());
-        let result = BibTex::compose(references);
+        let result = BibTex::compose(&references);
 
         // indents and newlines are important in this string so don't format!
         let expected = "@manual{entry1,
