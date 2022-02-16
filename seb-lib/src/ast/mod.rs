@@ -25,3 +25,21 @@ impl Field<'_> {
         &self.value
     }
 }
+
+impl<'entry> From<(&'entry String, &'entry QuotedString)> for Field<'entry> {
+    fn from((k, v): (&'entry String, &'entry QuotedString)) -> Self {
+        Self {
+            name: Cow::Borrowed(k),
+            value: Cow::Borrowed(v),
+        }
+    }
+}
+
+impl<'entry> From<(&'entry str, &'entry QuotedString)> for Field<'entry> {
+    fn from((k, v): (&'entry str, &'entry QuotedString)) -> Self {
+        Self {
+            name: Cow::Borrowed(k),
+            value: Cow::Borrowed(v),
+        }
+    }
+}
