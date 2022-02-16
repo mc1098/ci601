@@ -93,6 +93,30 @@ fn compose_fields(fields: &[ast::Field<'_>]) -> String {
         .collect()
 }
 
+impl From<biblatex::EntryType> for ast::EntryKind<'static> {
+    fn from(entry_type: biblatex::EntryType) -> Self {
+        use ast::EntryKind;
+        use biblatex::EntryType;
+
+        match entry_type.to_bibtex() {
+            EntryType::Article => EntryKind::Article,
+            EntryType::Book => EntryKind::Book,
+            EntryType::Booklet => EntryKind::Booklet,
+            EntryType::InCollection | EntryType::InBook | EntryType::SuppBook => {
+                EntryKind::BookSection
+            }
+            EntryType::InProceedings => EntryKind::InProceedings,
+            EntryType::Manual => EntryKind::Manual,
+            EntryType::MastersThesis => EntryKind::MasterThesis,
+            EntryType::PhdThesis => EntryKind::PhdThesis,
+            EntryType::TechReport | EntryType::Report => EntryKind::TechReport,
+            EntryType::Proceedings => EntryKind::Proceedings,
+            EntryType::Unpublished => EntryKind::Unpublished,
+            s => EntryKind::Other(std::borrow::Cow::Owned(s.to_string())),
+        }
+    }
+}
+
 impl From<biblatex::Entry> for ast::Resolver {
     fn from(entry: biblatex::Entry) -> Self {
         // Deconstruct to avoid cloning
@@ -102,25 +126,8 @@ impl From<biblatex::Entry> for ast::Resolver {
             mut fields,
         } = entry;
 
-        let mut resolver = match entry_type.to_bibtex() {
-            biblatex::EntryType::Article => ast::Article::resolver_with_cite(cite),
-            biblatex::EntryType::Book => ast::Book::resolver_with_cite(cite),
-            biblatex::EntryType::Booklet => ast::Booklet::resolver_with_cite(cite),
-            biblatex::EntryType::InCollection => ast::BookSection::resolver_with_cite(cite),
-            biblatex::EntryType::InProceedings => ast::InProceedings::resolver_with_cite(cite),
-            biblatex::EntryType::Manual => ast::Manual::resolver_with_cite(cite),
-            biblatex::EntryType::MastersThesis => ast::MasterThesis::resolver_with_cite(cite),
-            biblatex::EntryType::PhdThesis => ast::PhdThesis::resolver_with_cite(cite),
-            biblatex::EntryType::TechReport | biblatex::EntryType::Report => {
-                ast::TechReport::resolver_with_cite(cite)
-            }
-            biblatex::EntryType::InBook | biblatex::EntryType::SuppBook => {
-                ast::BookSection::resolver_with_cite(cite)
-            }
-            biblatex::EntryType::Proceedings => ast::Proceedings::resolver_with_cite(cite),
-            biblatex::EntryType::Unpublished => ast::Unpublished::resolver_with_cite(cite),
-            s => ast::Other::resolver_with_cite(cite, s.to_string()),
-        };
+        let kind = entry_type.into();
+        let mut resolver = ast::Entry::resolver_with_cite(kind, cite);
 
         for (name, value) in fields.drain() {
             if name == "booktitle" {

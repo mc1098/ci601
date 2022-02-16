@@ -2,7 +2,7 @@ use std::{borrow::Cow, collections::HashMap};
 
 use crate::ast::{FieldQuery, QuotedString};
 
-use super::Entry;
+use super::{Entry, EntryKind};
 
 /// A general `Entry` resolver that allows for retrying resolves of entries multiple times at runtime.
 ///
@@ -12,9 +12,9 @@ use super::Entry;
 /// # Examples
 ///
 /// ```
-/// use seb::ast::{Resolver, Manual, QuotedString};
+/// use seb::ast::{Entry, EntryKind, Resolver, QuotedString};
 ///
-/// let resolver = Manual::resolver_with_cite("cite_key".to_owned());
+/// let resolver = Entry::resolver_with_cite(EntryKind::Manual, "cite_key");
 ///
 /// // manual only requires the `title` field to be valid
 /// assert_eq!(&["title"][..], resolver.required_fields().collect::<Vec<_>>());
@@ -31,7 +31,7 @@ use super::Entry;
 #[derive(Debug)]
 #[cfg_attr(test, derive(Clone, PartialEq))]
 pub struct Resolver {
-    pub(super) target: Cow<'static, str>,
+    pub(super) target: EntryKind<'static>,
     pub(super) cite: Option<String>,
     pub(super) req: Vec<Cow<'static, str>>,
     pub(super) fields: HashMap<String, QuotedString>,
@@ -84,9 +84,9 @@ impl Resolver {
     ///
     /// ```
     /// use std::borrow::Cow;
-    /// use seb::ast::{Manual, QuotedString};
+    /// use seb::ast::{Entry, EntryKind, QuotedString};
     ///
-    /// let mut resolver = Manual::resolver_with_cite("cite".to_owned());
+    /// let mut resolver = Entry::resolver_with_cite(EntryKind::Manual, "cite");
     /// assert_eq!(Some(&Cow::Borrowed("title")), resolver.required_fields().next());
     ///
     /// // set the `title` field then check if the required_fields is returning an empty iter.
@@ -116,9 +116,9 @@ impl Resolver {
     /// # Examples
     ///
     /// ```
-    /// use seb::ast::{Manual, QuotedString};
+    /// use seb::ast::{Entry, EntryKind, QuotedString};
     ///
-    /// let resolver = Manual::resolver();
+    /// let resolver = Entry::resolver(EntryKind::Manual);
     /// let mut resolver = resolver.resolve().expect_err("Missing title field!");
     ///
     /// // we know that title is the only

@@ -98,7 +98,7 @@ impl TryFrom<Book> for Resolver {
                 },
         } = book;
 
-        let mut resolver = ast::Book::resolver();
+        let mut resolver = ast::Entry::resolver(ast::EntryKind::Book);
 
         // date_parts = Year-Month-Day, where Day is not often used.
         let mut date_parts = published_date.split('-');

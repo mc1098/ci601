@@ -16,13 +16,6 @@ pub trait FieldQuery {
     fn get_field(&self, name: &str) -> Option<&QuotedString>;
 }
 
-// const fn tuple_to_field<'a>((name, value): (&'a str, &'a QuotedString)) -> Field<'a> {
-//     Field {
-//         name: Cow::Borrowed(name),
-//         value: Cow::Borrowed(value),
-//     }
-// }
-
 macro_rules! entry_impl {
     ($(
         $mod:ident:
@@ -45,7 +38,39 @@ macro_rules! entry_impl {
             Other(Other),
         }
 
+        /// Types of bibliographic entries
+        #[derive(Debug, Clone, PartialEq)]
+        pub enum EntryKind<'entry> {
+            $(
+                $(#[$target_comment])*
+                $target,
+            )*
+            /// Custom entry type.
+            Other(Cow<'entry, str>),
+        }
+
+        impl std::fmt::Display for EntryKind<'_> {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+                match self {
+                    $(Self::$target => write!(f, stringify!($mod)),)*
+                    Self::Other(s) => write!(f, "{s}"),
+                }
+            }
+        }
+
         impl Entry {
+
+            /// Returns the type of Entry
+            ///
+            /// This can be used instead of the full entry enum for deciding to perform some action
+            /// based on the type of entry.
+            #[must_use]
+            pub fn kind(&self) -> EntryKind<'_> {
+                match self {
+                    $(Self::$target(_) => EntryKind::$target,)*
+                    Self::Other(other) => EntryKind::Other(Cow::Borrowed(other.kind())),
+                }
+            }
 
             /// Returns the citation key of this entry.
             #[must_use]
@@ -98,6 +123,31 @@ macro_rules! entry_impl {
                 match self {
                     $(Self::$target(data) => data.find_field(name),)*
                     Self::Other(data) => data.find_field(name),
+                }
+            }
+
+            /// Creates a new [`Resolver`] for this type to ensure that the required fields
+            /// are set before the entry type can be built.
+            ///
+            /// Does not set the cite value of the resolver so will be generated based on
+            /// the field values.
+            #[must_use]
+            pub fn resolver(kind: EntryKind<'_>) -> Resolver {
+                match kind {
+                    $(EntryKind::$target => $mod::$target::resolver(),)*
+                    EntryKind::Other(Cow::Owned(s)) => Other::resolver(s),
+                    EntryKind::Other(Cow::Borrowed(s)) => Other::resolver(s.to_owned()),
+                }
+            }
+
+            /// Creates a new [`Resolver`] for this type to ensure that the required fields
+            /// are set before the entry type can be built.
+            #[must_use]
+            pub fn resolver_with_cite<S: Into<String>>(kind: EntryKind<'_>, cite: S) -> Resolver {
+                match kind {
+                    $(EntryKind::$target => $mod::$target::resolver_with_cite(cite),)*
+                    EntryKind::Other(Cow::Owned(s)) => Other::resolver_with_cite(s, cite),
+                    EntryKind::Other(Cow::Borrowed(s)) => Other::resolver_with_cite(s.to_owned(), cite),
                 }
             }
         }
@@ -175,9 +225,9 @@ macro_rules! entry_impl {
                     /// Does not set the cite value of the resolver so will be generated based on
                     /// the field values.
                     #[must_use]
-                    pub fn resolver() -> Resolver {
+                    pub(super) fn resolver() -> Resolver {
                         Resolver {
-                            target: Cow::Owned(stringify!($mod).replace('_', " ")),
+                            target: EntryKind::$target,
                             cite: None,
                             req: [$(Cow::Borrowed(stringify!($req)),)+].into_iter().collect(),
                             fields: HashMap::new(),
@@ -188,9 +238,9 @@ macro_rules! entry_impl {
                     /// Creates a new [`Resolver`] for this type to ensure that the required fields
                     /// are set before the entry type can be built.
                     #[must_use]
-                    pub fn resolver_with_cite<S: Into<String>>(cite: S) -> Resolver {
+                    pub(super) fn resolver_with_cite<S: Into<String>>(cite: S) -> Resolver {
                         Resolver {
-                            target: Cow::Borrowed(stringify!($mod)),
+                            target: EntryKind::$target,
                             cite: Some(cite.into()),
                             req: [$(Cow::Borrowed(stringify!($req)),)+].into_iter().collect(),
                             fields: HashMap::new(),
@@ -296,12 +346,23 @@ impl Other {
         &self.kind
     }
 
+    #[must_use]
+    fn resolver(kind: String) -> Resolver {
+        Resolver {
+            target: EntryKind::Other(kind.into()),
+            cite: None,
+            req: vec![Cow::Borrowed("title")],
+            fields: HashMap::new(),
+            entry_resolve: Self::resolve,
+        }
+    }
+
     /// Creates a new [`Resolver`] for this type to ensure that the required fields
     /// are set before the entry type can be built.
     #[must_use]
-    pub fn resolver_with_cite<S: Into<String>>(cite: S, kind: String) -> Resolver {
+    pub fn resolver_with_cite<S: Into<String>>(kind: String, cite: S) -> Resolver {
         Resolver {
-            target: Cow::Owned(kind),
+            target: EntryKind::Other(kind.into()),
             cite: Some(cite.into()),
             req: vec![Cow::Borrowed("title")],
             fields: HashMap::new(),
