@@ -107,7 +107,7 @@ impl std::error::Error for BiblioResolver {}
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::Manual;
+    use crate::ast::{Entry, EntryKind, Manual};
 
     use super::*;
 
@@ -146,7 +146,7 @@ mod tests {
 
     #[test]
     fn some_resolver_on_checked_remove_with_single_resolver() {
-        let resolver = crate::ast::Article::resolver();
+        let resolver = Entry::resolver(EntryKind::Article);
 
         let mut biblio_resolver = BiblioResolver {
             failed: false,
@@ -169,7 +169,7 @@ mod tests {
             title: "Title".into(),
             optional: std::collections::HashMap::default(),
         });
-        let resolver = crate::ast::Article::resolver();
+        let resolver = Entry::resolver(EntryKind::Article);
 
         // use closure so we can create new BiblioResolver after altering internal state
         let create_biblio_resolver_with_both = || BiblioResolver {
@@ -227,7 +227,7 @@ mod tests {
             title: "Title".into(),
             optional: std::collections::HashMap::default(),
         });
-        let resolver = crate::ast::Article::resolver();
+        let resolver = Entry::resolver(EntryKind::Article);
 
         let biblio_resolver = BiblioResolver {
             failed: false,
@@ -246,8 +246,8 @@ mod tests {
 
     #[test]
     fn display_of_resolver_is_correctly_formatted() {
-        let resolver_one = crate::ast::Article::resolver();
-        let resolver_two = crate::ast::PhdThesis::resolver();
+        let resolver_one = Entry::resolver(EntryKind::Article);
+        let resolver_two = Entry::resolver(EntryKind::PhdThesis);
 
         let biblio_resolver = BiblioResolver {
             failed: false,
