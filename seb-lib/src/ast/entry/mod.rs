@@ -16,9 +16,7 @@ pub trait FieldQuery {
     fn get_field(&self, name: &str) -> Option<&QuotedString>;
 }
 
-const fn tuple_to_field<'name, 'value>(
-    (name, value): (&'name str, &'value QuotedString),
-) -> Field<'name, 'value> {
+const fn tuple_to_field<'a>((name, value): (&'a str, &'a QuotedString)) -> Field<'a> {
     Field {
         name: Cow::Borrowed(name),
         value: Cow::Borrowed(value),
@@ -83,7 +81,7 @@ macro_rules! entry_impl {
             /// The fields returned include the required and optional fields in no particular
             /// order.
             #[must_use]
-            pub fn fields(&self) -> Vec<Field<'_, '_>> {
+            pub fn fields(&self) -> Vec<Field<'_>> {
                 match self {
                     $(Self::$target(data) => data.fields(),)*
                     Self::Other(data) => data.fields(),
@@ -148,7 +146,7 @@ macro_rules! entry_impl {
                     /// The fields returned include the required and optional fields in no particular
                     /// order.
                     #[must_use]
-                    pub fn fields(&self) -> Vec<Field<'_, '_>> {
+                    pub fn fields(&self) -> Vec<Field<'_>> {
                         let mut fields: Vec<_> = [$((stringify!($req), &self.$req),)+]
                             .into_iter()
                             .map(tuple_to_field)
@@ -324,7 +322,7 @@ impl Other {
     /// The fields returned include the required and optional fields in no particular
     /// order.
     #[must_use]
-    pub fn fields(&self) -> Vec<Field<'_, '_>> {
+    pub fn fields(&self) -> Vec<Field<'_>> {
         let field = tuple_to_field(("title", &self.title));
         let mut fields = vec![field];
         fields.extend(self.optional.iter().map(|(k, v)| tuple_to_field((k, v))));

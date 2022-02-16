@@ -80,7 +80,7 @@ fn bibtex_esc(s: &str) -> String {
     format!("{{{s}}}")
 }
 
-fn compose_fields(fields: &[ast::Field<'_, '_>]) -> String {
+fn compose_fields(fields: &[ast::Field<'_>]) -> String {
     fields
         .iter()
         .map(|field| {
@@ -218,7 +218,7 @@ mod tests {
 
     use super::*;
 
-    fn fields() -> Vec<ast::Field<'static, 'static>> {
+    fn fields() -> Vec<ast::Field<'static>> {
         vec![ast::Field {
             name: Cow::Borrowed("author"),
             value: Cow::Owned("Me".into()),
