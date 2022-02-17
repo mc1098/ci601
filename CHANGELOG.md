@@ -1,6 +1,11 @@
+Unreleased
+
+==========
+
+Unreleased changes. Release notes have not yet been written.
+
 0.1.0
 =====
-Unreleased changes. Release notes have not yet been written.
 
 First release so features only!
 
