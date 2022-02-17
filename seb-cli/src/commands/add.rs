@@ -5,7 +5,7 @@ use crate::{
 
 use seb::ast::{Biblio, BiblioResolver, Entry};
 
-use clap::{AppSettings, Subcommand};
+use clap::Subcommand;
 use eyre::{eyre, Context};
 use log::{debug, info, trace};
 
@@ -13,7 +13,7 @@ use log::{debug, info, trace};
 #[allow(clippy::module_name_repetitions)]
 pub enum AddCommands {
     /// Search for reference by doi
-    #[clap(setting(AppSettings::ArgRequiredElseHelp))]
+    #[clap(arg_required_else_help = true)]
     Doi {
         /// The doi to search for
         doi: String,
@@ -25,7 +25,7 @@ pub enum AddCommands {
         cite: Option<String>,
     },
     /// Search for entry by IETF RFC number
-    #[clap(setting(AppSettings::ArgRequiredElseHelp))]
+    #[clap(arg_required_else_help = true)]
     Ietf {
         /// The RFC number to search for
         rfc_number: usize,
@@ -37,7 +37,7 @@ pub enum AddCommands {
         cite: Option<String>,
     },
     /// Search for reference by ISBN
-    #[clap(setting(AppSettings::ArgRequiredElseHelp))]
+    #[clap(arg_required_else_help = true)]
     Isbn {
         /// The ISBN to search for
         isbn: String,
@@ -49,7 +49,7 @@ pub enum AddCommands {
         cite: Option<String>,
     },
     /// Search for entry using the title
-    #[clap(setting(AppSettings::ArgRequiredElseHelp))]
+    #[clap(arg_required_else_help = true)]
     Title {
         /// The title to search for
         title: String,

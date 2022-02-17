@@ -4,20 +4,20 @@ use add::AddCommands;
 
 use seb::ast::Biblio;
 
-use clap::{AppSettings, Subcommand};
+use clap::Subcommand;
 use log::trace;
 
 #[derive(Subcommand)]
 #[non_exhaustive]
 pub enum Commands {
     /// Add an entry to the current bibliography file
-    #[clap(setting(AppSettings::ArgRequiredElseHelp))]
+    #[clap(arg_required_else_help = true)]
     Add {
         #[clap(subcommand)]
         command: AddCommands,
     },
     /// Remove an entry from the bibliography file using the cite key
-    #[clap(setting(AppSettings::ArgRequiredElseHelp))]
+    #[clap(arg_required_else_help = true)]
     Rm {
         /// The cite key of the entry to remove
         cite: String,
