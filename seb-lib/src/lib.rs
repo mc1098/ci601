@@ -8,12 +8,7 @@
 )]
 #![warn(missing_docs, rust_2018_idioms)]
 #![allow(clippy::module_name_repetitions)]
-
-//! # seb
-//!
-//! seb is a library which supports searching for bibliography entries from select APIs
-//! and adding them to an in memory bibliography model. seb supports transforming the in-memory
-//! bibliography to [`format::Format`]s such as [`format::BibTex`].
+#![doc = include_str!("../README.md")]
 
 mod api;
 pub mod ast;
