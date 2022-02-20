@@ -1,4 +1,5 @@
 # `seb-lib`
 
-This crate provides the library code used to build the `seb` CLI application, more information on
-the CLI application from the [seb-cli README](../seb-cli/README.md).
+seb is a library which supports searching for bibliography entries from select APIs
+and adding them to an in memory bibliography model. seb supports transforming the in-memory
+bibliography to [`format::Format`]s such as [`format::BibTex`].
