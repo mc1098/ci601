@@ -108,7 +108,11 @@ impl AddCommands {
             }
             AddCommands::Ietf { rfc_number, .. } => {
                 debug!("ietf subcommand called with value of '{}'", &rfc_number);
-                app::check_entry_field_duplication(biblio, "number", &rfc_number.to_string())?;
+                biblio.entries().any(|e| {
+                    matches!(e.kind(), seb::ast::EntryKind::Other(_))
+                        && contains_field(e, "series", "Request for Comment")
+                        && contains_field(e, "number", rfc_number.to_string().as_str())
+                });
                 seb::entries_by_rfc(*rfc_number).wrap_err_with(|| eyre!("Cannot find the entry"))
             }
             AddCommands::Isbn { isbn, .. } => {
@@ -155,4 +159,13 @@ impl AddCommands {
             _ => {}
         }
     }
+}
+
+fn contains_field(entry: &Entry, field_name: &str, value: &str) -> bool {
+    use seb::ast::FieldQuery;
+
+    entry
+        .get_field(field_name)
+        .map(|v| v.as_ref() == value)
+        .unwrap_or_default()
 }
