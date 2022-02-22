@@ -106,7 +106,7 @@ impl Resolver {
     /// use seb::ast::{Entry, EntryKind, QuotedString};
     ///
     /// let mut resolver = Entry::resolver_with_cite(EntryKind::Manual, "cite");
-    /// assert_eq!(Some(&Cow::Borrowed("title")), resolver.required_fields().next());
+    /// assert_eq!(Some("title"), resolver.required_fields().next());
     ///
     /// // set the `title` field then check if the required_fields is returning an empty iter.
     /// resolver.title(QuotedString::new("My manual".to_owned()));
