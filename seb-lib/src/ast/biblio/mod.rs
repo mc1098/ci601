@@ -4,7 +4,7 @@ mod resolver;
 
 pub use resolver::BiblioResolver;
 
-use super::{Entry, QuotedString, Resolver};
+use super::{Entry, FieldQuery, QuotedString, Resolver};
 
 /// An intermediate representation of a bibliography which is not tied to a specific end format.
 #[derive(Debug, Default, PartialEq)]
@@ -105,7 +105,7 @@ impl Biblio {
     {
         self.entries
             .values()
-            .any(|e| e.find_field(key).map(&predicate).unwrap_or_default())
+            .any(|e| e.get_field(key).map(&predicate).unwrap_or_default())
     }
 }
 
