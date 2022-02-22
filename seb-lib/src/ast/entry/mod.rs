@@ -125,19 +125,6 @@ macro_rules! entry_impl {
                 }
             }
 
-            /// Searches for a field value that matches the `name` given.
-            ///
-            /// [`Self::find_field`] returns `Some(&QuotedString)` when a matching field is found
-            /// and the return is the value of that matching field, returns `None` when no field
-            /// matches the `name`.
-            #[must_use]
-            pub fn find_field(&self, name: &str) -> Option<&QuotedString> {
-                match self {
-                    $(Self::$target(data) => data.find_field(name),)*
-                    Self::Other(data) => data.find_field(name),
-                }
-            }
-
             /// Creates a new [`Resolver`] for this type to ensure that the required fields
             /// are set before the entry type can be built.
             ///
@@ -215,20 +202,6 @@ macro_rules! entry_impl {
                             .collect();
                         fields.extend(self.optional.iter().map(Field::from));
                         fields
-                    }
-
-                    /// Searches for a field value that matches the `name` given.
-                    ///
-                    /// [`Self::find_field`] returns `Some(&QuotedString)` when a matching field is found
-                    /// and the return is the value of that matching field, returns `None` when no field
-                    /// matches the `name`.
-                    #[must_use]
-                    pub fn find_field(&self, name: &str) -> Option<&QuotedString> {
-                        let normal_name = name.to_lowercase();
-                        match normal_name.as_str() {
-                            $(stringify!($req) => Some(&self.$req),)+
-                            s => self.optional.get(s),
-                        }
                     }
 
                     /// Creates a new [`Resolver`] for this type to ensure that the required fields
@@ -389,24 +362,15 @@ impl Other {
         fields.extend(self.optional.iter().map(Field::from));
         fields
     }
-    /// Searches for a field value that matches the `name` given.
-    ///
-    /// [`Self::find_field`] returns `Some(&QuotedString)` when a matching field is found
-    /// and the return is the value of that matching field, returns `None` when no field
-    /// matches the `name`.
-    #[must_use]
-    pub fn find_field(&self, name: &str) -> Option<&QuotedString> {
+}
+
+impl FieldQuery for Other {
+    fn get_field(&self, name: &str) -> Option<&QuotedString> {
         let normal_name = name.to_lowercase();
         match normal_name.as_str() {
             "title" => Some(&self.title),
             s => self.optional.get(s),
         }
-    }
-}
-
-impl FieldQuery for Other {
-    fn get_field(&self, name: &str) -> Option<&QuotedString> {
-        self.find_field(name)
     }
 }
 
