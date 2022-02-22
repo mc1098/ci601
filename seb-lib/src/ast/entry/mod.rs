@@ -49,6 +49,18 @@ macro_rules! entry_impl {
             Other(Cow<'entry, str>),
         }
 
+        impl EntryKind<'_> {
+            /// Returns a slice of the required fields that need to be set in order to make this
+            /// entry kind valid.
+            #[must_use]
+            pub const fn required_fields(&self) -> &'static [&'static str] {
+                match self {
+                    $(Self::$target => &[$(stringify!($req),)+],)*
+                    Self::Other(_) => &["title"],
+                }
+            }
+        }
+
         impl std::fmt::Display for EntryKind<'_> {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
                 match self {
