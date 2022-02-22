@@ -49,6 +49,18 @@ macro_rules! entry_impl {
             Other(Cow<'entry, str>),
         }
 
+        impl EntryKind<'_> {
+            /// Returns a slice of the required fields that need to be set in order to make this
+            /// entry kind valid.
+            #[must_use]
+            pub const fn required_fields(&self) -> &'static [&'static str] {
+                match self {
+                    $(Self::$target => &[$(stringify!($req),)+],)*
+                    Self::Other(_) => &["title"],
+                }
+            }
+        }
+
         impl std::fmt::Display for EntryKind<'_> {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
                 match self {
@@ -226,26 +238,14 @@ macro_rules! entry_impl {
                     /// the field values.
                     #[must_use]
                     pub(super) fn resolver() -> Resolver {
-                        Resolver {
-                            target: EntryKind::$target,
-                            cite: None,
-                            req: [$(Cow::Borrowed(stringify!($req)),)+].into_iter().collect(),
-                            fields: HashMap::new(),
-                            entry_resolve: resolve,
-                        }
+                        Resolver::new(EntryKind::$target, None, resolve)
                     }
 
                     /// Creates a new [`Resolver`] for this type to ensure that the required fields
                     /// are set before the entry type can be built.
                     #[must_use]
                     pub(super) fn resolver_with_cite<S: Into<String>>(cite: S) -> Resolver {
-                        Resolver {
-                            target: EntryKind::$target,
-                            cite: Some(cite.into()),
-                            req: [$(Cow::Borrowed(stringify!($req)),)+].into_iter().collect(),
-                            fields: HashMap::new(),
-                            entry_resolve: resolve,
-                        }
+                        Resolver::new(EntryKind::$target, Some(cite.into()), resolve)
                     }
                 }
 
@@ -351,7 +351,7 @@ impl Other {
         Resolver {
             target: EntryKind::Other(kind.into()),
             cite: None,
-            req: vec![Cow::Borrowed("title")],
+            req: vec!["title"],
             fields: HashMap::new(),
             entry_resolve: Self::resolve,
         }
@@ -364,7 +364,7 @@ impl Other {
         Resolver {
             target: EntryKind::Other(kind.into()),
             cite: Some(cite.into()),
-            req: vec![Cow::Borrowed("title")],
+            req: vec!["title"],
             fields: HashMap::new(),
             entry_resolve: Self::resolve,
         }
