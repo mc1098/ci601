@@ -33,12 +33,31 @@ use super::{Entry, EntryKind};
 pub struct Resolver {
     pub(super) target: EntryKind<'static>,
     pub(super) cite: Option<String>,
-    pub(super) req: Vec<Cow<'static, str>>,
+    pub(super) req: Vec<&'static str>,
     pub(super) fields: HashMap<String, QuotedString>,
     pub(super) entry_resolve: fn(Self) -> Entry,
 }
 
 impl Resolver {
+    pub(crate) fn new(
+        kind: EntryKind<'static>,
+        cite: Option<String>,
+        entry_resolve: fn(Self) -> Entry,
+    ) -> Self {
+        let req = kind
+            .required_fields()
+            .iter()
+            .map(std::ops::Deref::deref)
+            .collect();
+
+        Self {
+            target: kind,
+            cite,
+            req,
+            fields: HashMap::default(),
+            entry_resolve,
+        }
+    }
     /// Returns the cite key for the entry being built.
     ///
     /// The cite key may either be a known value given to the resolver or will be generated using
@@ -93,11 +112,11 @@ impl Resolver {
     /// resolver.title(QuotedString::new("My manual".to_owned()));
     /// assert_eq!(None, resolver.required_fields().next());
     /// ```
-    pub fn required_fields(&self) -> impl Iterator<Item = &Cow<'static, str>> {
-        self.req.iter()
+    pub fn required_fields(&self) -> impl Iterator<Item = &str> {
+        self.req.iter().copied()
     }
 
-    fn entry<'a>(&'a mut self, name: Cow<'static, str>) -> ResolverEntry<'a> {
+    fn entry<'a>(&'a mut self, name: &'static str) -> ResolverEntry<'a> {
         ResolverEntry {
             key: Some(name),
             resolver: self,
@@ -158,7 +177,7 @@ impl Resolver {
     /// Checks whether this field is a required field and will remove that name from the required
     /// set.
     fn set_normalized_field(&mut self, name: String, value: QuotedString) {
-        self.req.retain(|r| r != name.as_str());
+        self.req.retain(|r| *r != name.as_str());
         self.fields.insert(name, value);
     }
 }
@@ -196,7 +215,7 @@ pub struct ResolverEntry<'a> {
     // key is an Option but is always a Some value so unwrapping is always safe apart from the
     // drop implementation which will check whether the value has been taken in order to reinsert
     // it in the required fields.
-    key: Option<Cow<'static, str>>,
+    key: Option<&'static str>,
     resolver: &'a mut Resolver,
 }
 
@@ -214,7 +233,7 @@ impl<'a> ResolverEntry<'a> {
     /// Sets the value of the entry.
     #[allow(clippy::missing_panics_doc)] // see key field comment
     pub fn insert(mut self, default: QuotedString) {
-        let key = self.key.take().map(Cow::into_owned).unwrap();
+        let key = self.key.take().map(ToOwned::to_owned).unwrap();
         self.resolver.fields.insert(key, default);
     }
 
