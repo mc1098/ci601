@@ -31,6 +31,7 @@ mod tests {
 
     use crate::{
         api::{impl_text_producer, MockClient, NetworkErrorProducer},
+        ast::EntryExt,
         format::BibTex,
         ErrorKind,
     };

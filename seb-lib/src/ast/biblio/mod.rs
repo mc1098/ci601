@@ -4,25 +4,39 @@ mod resolver;
 
 pub use resolver::BiblioResolver;
 
-use super::{Entry, FieldQuery, QuotedString, Resolver};
+use super::{EntryExt, QuotedString, Resolver};
 
 /// An intermediate representation of a bibliography which is not tied to a specific end format.
-#[derive(Debug, Default, PartialEq)]
-#[cfg_attr(test, derive(Clone))]
+#[derive(Debug, Default)]
 pub struct Biblio {
     dirty: bool,
-    entries: HashMap<String, Entry>,
+    entries: HashMap<String, Box<dyn EntryExt>>,
+}
+
+impl PartialEq for Biblio {
+    fn eq(&self, other: &Self) -> bool {
+        for (cite, entry) in &self.entries {
+            if let Some(other_entry) = other.entries.get(cite) {
+                for field in entry.fields() {
+                    if other_entry.get_field(&field.name).is_none() {
+                        return false;
+                    }
+                }
+            }
+        }
+        self.dirty == other.dirty
+    }
 }
 
 impl Biblio {
     /// Create a new [`Biblio`] from a list of bibliography entries.
     #[must_use]
-    pub fn new(entries: Vec<Entry>) -> Self {
+    pub fn new(entries: Vec<Box<dyn EntryExt>>) -> Self {
         Self {
             dirty: false,
             entries: entries
                 .into_iter()
-                .map(|e| (e.cite().to_owned(), e))
+                .map(|e| (e.cite().into_owned(), e))
                 .collect(),
         }
     }
@@ -55,9 +69,9 @@ impl Biblio {
     }
 
     /// Insert a new [`Entry`].
-    pub fn insert(&mut self, entry: Entry) {
+    pub fn insert(&mut self, entry: Box<dyn EntryExt>) {
         self.dirty = true;
-        self.entries.insert(entry.cite().to_owned(), entry);
+        self.entries.insert(entry.cite().into_owned(), entry);
     }
 
     /// Remove the cite key and return the [`Entry`] value if they cite was found.
@@ -74,14 +88,14 @@ impl Biblio {
     }
 
     /// Return a reference to a slice of entries.
-    pub fn entries(&self) -> impl Iterator<Item = &Entry> {
-        self.entries.values()
+    pub fn entries(&self) -> impl Iterator<Item = &dyn EntryExt> {
+        self.entries.values().map(AsRef::as_ref)
     }
 
     /// Creates entries from a value.
     #[must_use]
     #[allow(clippy::missing_const_for_fn)] // drop is not const
-    pub fn into_entries(self) -> Vec<Entry> {
+    pub fn into_entries(self) -> Vec<Box<dyn EntryExt>> {
         self.entries.into_iter().map(|(_, v)| v).collect()
     }
 
@@ -124,11 +138,14 @@ mod tests {
 
         assert!(!biblio.dirty(), "Biblio::default should be clean");
 
-        biblio.insert(Entry::Manual(Manual {
+        let manual = Manual {
+            kind: crate::ast::kind::Manual.into(),
             cite: "cite".to_owned(),
             title: "Title".into(),
             optional: HashMap::default(),
-        }));
+        };
+
+        biblio.insert(Box::new(manual));
 
         assert!(
             biblio.dirty(),
@@ -157,11 +174,13 @@ mod tests {
 
     #[test]
     fn remove_entry_in_single_biblio() {
-        let mut biblio = Biblio::new(vec![Entry::Manual(Manual {
+        let manual = Manual {
+            kind: crate::ast::kind::Manual.into(),
             cite: "cite".to_owned(),
             title: "Title".into(),
             optional: HashMap::default(),
-        })]);
+        };
+        let mut biblio = Biblio::new(vec![Box::new(manual)]);
 
         assert!(biblio.remove("cite"), "Should remove the only entry");
         assert!(biblio.dirty());
@@ -181,12 +200,13 @@ mod tests {
         let value = "test".into();
         let mut optional = HashMap::new();
         optional.insert("doi".to_owned(), value);
-        let entry = Entry::Manual(Manual {
+        let entry = Manual {
+            kind: crate::ast::kind::Manual.into(),
             cite: "Edelkamp_2019".to_owned(),
             title,
             optional,
-        });
-        let references = Biblio::new(vec![entry]);
+        };
+        let references = Biblio::new(vec![Box::new(entry)]);
 
         assert!(references.contains_field("doi", |f| &**f == "test"));
         assert!(!references.contains_field("doi", |f| &**f == "something else"));
