@@ -95,7 +95,7 @@ fn compose_fields(fields: &[ast::Field<'_>]) -> String {
         .collect()
 }
 
-fn resolver_for_type(entry_type: biblatex::EntryType, cite: String) -> Resolver {
+fn resolver_for_type(entry_type: &biblatex::EntryType, cite: String) -> Resolver {
     use biblatex::EntryType;
 
     match entry_type.to_bibtex() {
@@ -125,7 +125,7 @@ impl From<biblatex::Entry> for ast::Resolver {
             mut fields,
         } = entry;
 
-        let mut resolver = resolver_for_type(entry_type, cite);
+        let mut resolver = resolver_for_type(&entry_type, cite);
 
         for (name, value) in fields.drain() {
             if name == "booktitle" {
