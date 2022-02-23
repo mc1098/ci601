@@ -1,5 +1,5 @@
 use crate::{
-    ast::{self, Biblio, BiblioResolver, QuotedString},
+    ast::{self, Biblio, BiblioResolver, QuotedString, Resolver},
     Error, ErrorKind,
 };
 
@@ -38,7 +38,7 @@ impl Format for BibTex {
         Self(s)
     }
 
-    fn compose_entry(entry: &ast::Entry) -> String {
+    fn compose_entry(entry: &dyn ast::EntryExt) -> String {
         format!(
             "@{}{{{},\n{}}}\n",
             compose_variant(entry),
@@ -60,21 +60,21 @@ impl Format for BibTex {
     }
 }
 
-fn compose_variant(entry: &ast::Entry) -> &str {
-    match entry {
-        ast::Entry::Article(_) => "article",
-        ast::Entry::Book(_) => "book",
-        ast::Entry::Booklet(_) => "booklet",
-        ast::Entry::BookChapter(_) | ast::Entry::BookPages(_) => "inbook",
-        ast::Entry::BookSection(_) => "incollection",
-        ast::Entry::InProceedings(_) => "inproceedings",
-        ast::Entry::Manual(_) => "manual",
-        ast::Entry::MasterThesis(_) => "masterthesis",
-        ast::Entry::PhdThesis(_) => "phdthesis",
-        ast::Entry::Other(data) => data.kind(),
-        ast::Entry::Proceedings(_) => "proceedings",
-        ast::Entry::TechReport(_) => "techreport",
-        ast::Entry::Unpublished(_) => "unpublished",
+fn compose_variant(entry: &dyn ast::EntryExt) -> &str {
+    match entry.kind() {
+        ast::kind::Article => "article",
+        ast::kind::Book => "book",
+        ast::kind::Booklet => "booklet",
+        ast::kind::BookChapter | ast::kind::BookPages => "inbook",
+        ast::kind::BookSection => "incollection",
+        ast::kind::InProceedings => "inproceedings",
+        ast::kind::Manual => "manual",
+        ast::kind::MasterThesis => "masterthesis",
+        ast::kind::PhdThesis => "phdthesis",
+        ast::kind::Proceedings => "proceedings",
+        ast::kind::TechReport => "techreport",
+        ast::kind::Unpublished => "unpublished",
+        s => s,
     }
 }
 
@@ -95,27 +95,24 @@ fn compose_fields(fields: &[ast::Field<'_>]) -> String {
         .collect()
 }
 
-impl From<biblatex::EntryType> for ast::EntryKind<'static> {
-    fn from(entry_type: biblatex::EntryType) -> Self {
-        use ast::EntryKind;
-        use biblatex::EntryType;
+fn resolver_for_type(entry_type: &biblatex::EntryType, cite: String) -> Resolver {
+    use biblatex::EntryType;
 
-        match entry_type.to_bibtex() {
-            EntryType::Article => EntryKind::Article,
-            EntryType::Book => EntryKind::Book,
-            EntryType::Booklet => EntryKind::Booklet,
-            EntryType::InCollection | EntryType::InBook | EntryType::SuppBook => {
-                EntryKind::BookSection
-            }
-            EntryType::InProceedings => EntryKind::InProceedings,
-            EntryType::Manual => EntryKind::Manual,
-            EntryType::MastersThesis => EntryKind::MasterThesis,
-            EntryType::PhdThesis => EntryKind::PhdThesis,
-            EntryType::TechReport | EntryType::Report => EntryKind::TechReport,
-            EntryType::Proceedings => EntryKind::Proceedings,
-            EntryType::Unpublished => EntryKind::Unpublished,
-            s => EntryKind::Other(std::borrow::Cow::Owned(s.to_string())),
+    match entry_type.to_bibtex() {
+        EntryType::Article => ast::Article::resolver_with_cite(cite),
+        EntryType::Book => ast::Book::resolver_with_cite(cite),
+        EntryType::Booklet => ast::Booklet::resolver_with_cite(cite),
+        EntryType::InCollection | EntryType::InBook | EntryType::SuppBook => {
+            ast::BookSection::resolver_with_cite(cite)
         }
+        EntryType::InProceedings => ast::InProceedings::resolver_with_cite(cite),
+        EntryType::Manual => ast::Manual::resolver_with_cite(cite),
+        EntryType::MastersThesis => ast::MasterThesis::resolver_with_cite(cite),
+        EntryType::PhdThesis => ast::PhdThesis::resolver_with_cite(cite),
+        EntryType::TechReport | EntryType::Report => ast::TechReport::resolver_with_cite(cite),
+        EntryType::Proceedings => ast::Proceedings::resolver_with_cite(cite),
+        EntryType::Unpublished => ast::Unpublished::resolver_with_cite(cite),
+        s => ast::Other::resolver_with_cite(s.to_string(), cite),
     }
 }
 
@@ -128,8 +125,7 @@ impl From<biblatex::Entry> for ast::Resolver {
             mut fields,
         } = entry;
 
-        let kind = entry_type.into();
-        let mut resolver = ast::Entry::resolver_with_cite(kind, cite);
+        let mut resolver = resolver_for_type(&entry_type, cite);
 
         for (name, value) in fields.drain() {
             if name == "booktitle" {
@@ -223,8 +219,6 @@ mod tests {
 
     use std::{borrow::Cow, collections::HashMap};
 
-    use crate::ast::FieldQuery;
-
     use super::*;
 
     fn fields() -> Vec<ast::Field<'static>> {
@@ -234,8 +228,9 @@ mod tests {
         }]
     }
 
-    fn entries() -> Vec<ast::Entry> {
-        vec![ast::Entry::Manual(ast::Manual {
+    fn entries() -> Vec<Box<dyn ast::EntryExt>> {
+        vec![Box::new(ast::Manual {
+            kind: ast::kind::Manual.into(),
             cite: "entry1".to_owned(),
             title: "Test".into(),
             optional: HashMap::from([("author".to_owned(), "Me".into())]),
@@ -251,7 +246,7 @@ mod tests {
             .expect("Empty string is a valid BibTeX")
             .expect("Empty string is trivially resolved");
 
-        assert_eq!(Vec::<crate::ast::Entry>::new(), biblio.into_entries());
+        assert!(biblio.into_entries().is_empty());
     }
 
     #[test]

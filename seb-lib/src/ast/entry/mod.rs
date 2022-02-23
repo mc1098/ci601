@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::HashMap};
+use std::{borrow::Cow, collections::HashMap, fmt::Debug};
 
 use super::{Field, QuotedString};
 
@@ -6,14 +6,53 @@ mod resolver;
 
 pub use resolver::*;
 
-/// Trait for querying data structures with fields.
-pub trait FieldQuery {
+/// Trait for representing both resolved and unresolved entry types.
+pub trait EntryExt: Debug {
+    /// Returns the type of the Entry.
+    ///
+    /// This can be used to help identify the entry type, especially when dealing with a trait
+    /// object of `EntryExt`.
+    fn kind(&self) -> &str;
+
     /// Searches for a field value that matches the `name` given.
     ///
     /// [`Self::get_field`] returns `Some(&QuotedString)` when a matching field is found
     /// and the return is the value of that matching field, returns `None` when no field
     /// matches the `name`.
     fn get_field(&self, name: &str) -> Option<&QuotedString>;
+
+    /// Returns the citation key of this entry.
+    fn cite(&self) -> Cow<'_, str>;
+
+    /// Sets the citation key of this entry to a new value and returns the existing.
+    fn set_cite(&mut self, cite: String) -> String;
+
+    /// Returns the `title` field value of this entry.
+    ///
+    /// Entry titles provide a textual representation of the bibliographic entry itself and for
+    /// this crate should not be empty for resolved entry types.
+    fn title(&self) -> &QuotedString {
+        // default impl simply gets and tries to unwrap.
+        self.get_field("title").expect(
+            "Title is a requirement for all Entry types for seb but was not included on this entry",
+        )
+    }
+
+    /// Returns the [`Field`]s of the entry.
+    ///
+    /// The fields returned include the required and optional fields in no particular
+    /// order.
+    fn fields(&self) -> Vec<Field<'_>>;
+
+    /// Returns true if two instances of this trait are equal.
+    fn eq(&self, other: &dyn EntryExt) -> bool {
+        for field in self.fields() {
+            if other.get_field(&field.name).is_none() {
+                return false;
+            }
+        }
+        self.cite() == other.cite()
+    }
 }
 
 macro_rules! entry_impl {
@@ -25,139 +64,14 @@ macro_rules! entry_impl {
                 $req:ident
             ),+)
     ),* $(,)?) => {
-        /// An intermediate representation of a bibliography entry which is not tied to a specific end
-        /// format.
-        #[derive(Debug, PartialEq)]
-        #[cfg_attr(test, derive(Clone))]
-        pub enum Entry {
+
+        /// Modular that includes preset global variables that represent different entry types.
+        pub mod kind {
             $(
                 $(#[$target_comment])*
-                $target($target),
+                #[allow(non_upper_case_globals)]
+                pub const $target: &str = stringify!($mod);
             )*
-            /// Any other resource not supported by other entry variants.
-            Other(Other),
-        }
-
-        /// Types of bibliographic entries
-        #[derive(Debug, Clone, PartialEq)]
-        pub enum EntryKind<'entry> {
-            $(
-                $(#[$target_comment])*
-                $target,
-            )*
-            /// Custom entry type.
-            Other(Cow<'entry, str>),
-        }
-
-        impl EntryKind<'_> {
-            /// Returns a slice of the required fields that need to be set in order to make this
-            /// entry kind valid.
-            #[must_use]
-            pub const fn required_fields(&self) -> &'static [&'static str] {
-                match self {
-                    $(Self::$target => &[$(stringify!($req),)+],)*
-                    Self::Other(_) => &["title"],
-                }
-            }
-        }
-
-        impl std::fmt::Display for EntryKind<'_> {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-                match self {
-                    $(Self::$target => write!(f, stringify!($mod)),)*
-                    Self::Other(s) => write!(f, "{s}"),
-                }
-            }
-        }
-
-        impl Entry {
-
-            /// Returns the type of Entry
-            ///
-            /// This can be used instead of the full entry enum for deciding to perform some action
-            /// based on the type of entry.
-            #[must_use]
-            pub fn kind(&self) -> EntryKind<'_> {
-                match self {
-                    $(Self::$target(_) => EntryKind::$target,)*
-                    Self::Other(other) => EntryKind::Other(Cow::Borrowed(other.kind())),
-                }
-            }
-
-            /// Returns the citation key of this entry.
-            #[must_use]
-            pub fn cite(&self) -> &str {
-                match self {
-                    $(Self::$target(data) => &data.cite,)*
-                    Self::Other(other) => &other.cite,
-                }
-            }
-
-            /// Sets the citation key of this entry to a new value.
-            pub fn set_cite(&mut self, cite: String) {
-                match self {
-                    $(Self::$target(data) => { data.cite = cite; },)*
-                    Self::Other(data) => { data.cite = cite; },
-                }
-            }
-
-            /// Returns the `title` field value of this entry.
-            ///
-            /// Each [`Entry`] type is required to have a `title` field so this should always
-            /// represent a valid value.
-            #[must_use]
-            pub const fn title(&self) -> &QuotedString {
-                match self {
-                    $(Self::$target(data) => &data.title(),)*
-                    Self::Other(data) => &data.title,
-                }
-            }
-
-            /// Returns the [`Field`]s of the entry.
-            ///
-            /// The fields returned include the required and optional fields in no particular
-            /// order.
-            #[must_use]
-            pub fn fields(&self) -> Vec<Field<'_>> {
-                match self {
-                    $(Self::$target(data) => data.fields(),)*
-                    Self::Other(data) => data.fields(),
-                }
-            }
-
-            /// Creates a new [`Resolver`] for this type to ensure that the required fields
-            /// are set before the entry type can be built.
-            ///
-            /// Does not set the cite value of the resolver so will be generated based on
-            /// the field values.
-            #[must_use]
-            pub fn resolver(kind: EntryKind<'_>) -> Resolver {
-                match kind {
-                    $(EntryKind::$target => $mod::$target::resolver(),)*
-                    EntryKind::Other(Cow::Owned(s)) => Other::resolver(s),
-                    EntryKind::Other(Cow::Borrowed(s)) => Other::resolver(s.to_owned()),
-                }
-            }
-
-            /// Creates a new [`Resolver`] for this type to ensure that the required fields
-            /// are set before the entry type can be built.
-            #[must_use]
-            pub fn resolver_with_cite<S: Into<String>>(kind: EntryKind<'_>, cite: S) -> Resolver {
-                match kind {
-                    $(EntryKind::$target => $mod::$target::resolver_with_cite(cite),)*
-                    EntryKind::Other(Cow::Owned(s)) => Other::resolver_with_cite(s, cite),
-                    EntryKind::Other(Cow::Borrowed(s)) => Other::resolver_with_cite(s.to_owned(), cite),
-                }
-            }
-        }
-
-        impl FieldQuery for Entry {
-            fn get_field(&self, name: &str) -> Option<&QuotedString> {
-                match self {
-                    $(Self::$target(data) => data.get_field(name),)*
-                    Self::Other(data) => data.get_field(name),
-                }
-            }
         }
 
         $(
@@ -171,6 +85,10 @@ macro_rules! entry_impl {
                 pub struct $target {
                     /// Citation key of the entry
                     pub cite: String,
+
+                    /// The name of the kind.
+                    pub kind: Cow<'static, str>,
+
                     $(
                         $(#[$req_comment])*
                         pub $req: QuotedString,
@@ -181,28 +99,6 @@ macro_rules! entry_impl {
                 }
 
                 impl $target {
-                    /// Returns the `title` field value of this entry.
-                    ///
-                    /// This type is required to have a `title` field so this should always
-                    /// represent a valid value.
-                    #[must_use]
-                    pub const fn title(&self) -> &QuotedString {
-                        &self.title
-                    }
-
-                    /// Returns the [`Field`]s of the entry.
-                    ///
-                    /// The fields returned include the required and optional fields in no particular
-                    /// order.
-                    #[must_use]
-                    pub fn fields(&self) -> Vec<Field<'_>> {
-                        let mut fields: Vec<_> = [$((stringify!($req), &self.$req),)+]
-                            .into_iter()
-                            .map(Field::from)
-                            .collect();
-                        fields.extend(self.optional.iter().map(Field::from));
-                        fields
-                    }
 
                     /// Creates a new [`Resolver`] for this type to ensure that the required fields
                     /// are set before the entry type can be built.
@@ -210,19 +106,50 @@ macro_rules! entry_impl {
                     /// Does not set the cite value of the resolver so will be generated based on
                     /// the field values.
                     #[must_use]
-                    pub(super) fn resolver() -> Resolver {
-                        Resolver::new(EntryKind::$target, None, resolve)
+                    pub fn resolver() -> Resolver {
+                        Resolver {
+                            kind: Cow::Borrowed(stringify!($mod)),
+                            cite: None,
+                            req: [$(stringify!($req),)+].to_vec(),
+                            fields: HashMap::default(),
+                            entry_resolve: resolve,
+                        }
                     }
 
                     /// Creates a new [`Resolver`] for this type to ensure that the required fields
                     /// are set before the entry type can be built.
                     #[must_use]
-                    pub(super) fn resolver_with_cite<S: Into<String>>(cite: S) -> Resolver {
-                        Resolver::new(EntryKind::$target, Some(cite.into()), resolve)
+                    pub fn resolver_with_cite<S: Into<String>>(cite: S) -> Resolver {
+                        Resolver {
+                            kind: Cow::Borrowed(stringify!($mod)),
+                            cite: Some(cite.into()),
+                            req: [$(stringify!($req),)+].to_vec(),
+                            fields: HashMap::default(),
+                            entry_resolve: resolve,
+                        }
                     }
                 }
 
-                impl FieldQuery for $target {
+
+                fn resolve(mut resolver: Resolver) -> Box<dyn EntryExt> {
+                    let cite = resolver.cite().to_string();
+
+                    let data = $target {
+                        kind: resolver.kind,
+                        cite,
+                        $($req: resolver.fields.remove(stringify!($req)).unwrap(),)+
+                        optional: resolver.fields,
+                    };
+
+                    Box::new(data)
+
+                }
+
+                impl EntryExt for $target {
+                    fn kind(&self) -> &str {
+                        &self.kind
+                    }
+
                     fn get_field(&self, name: &str) -> Option<&QuotedString> {
                         let normal_name = name.to_lowercase();
                         match normal_name.as_str() {
@@ -230,18 +157,23 @@ macro_rules! entry_impl {
                             s => self.optional.get(s),
                         }
                     }
-                }
 
-                fn resolve(mut resolver: Resolver) -> Entry {
-                    let cite = resolver.cite().to_string();
+                    fn cite(&self) -> Cow<'_, str> {
+                        Cow::Borrowed(&self.cite)
+                    }
 
-                    let data = $target {
-                        cite,
-                        $($req: resolver.fields.remove(stringify!($req)).unwrap(),)+
-                        optional: resolver.fields,
-                    };
+                    fn set_cite(&mut self, cite: String) -> String {
+                        std::mem::replace(&mut self.cite, cite)
+                    }
 
-                    Entry::$target(data)
+                    fn fields(&self) -> Vec<Field<'_>> {
+                        let mut fields: Vec<_> = [$((stringify!($req), &self.$req),)+]
+                            .into_iter()
+                            .map(Field::from)
+                            .collect();
+                        fields.extend(self.optional.iter().map(Field::from));
+                        fields
+                    }
                 }
 
                 #[test]
@@ -288,14 +220,11 @@ macro_rules! entry_impl {
 
                     let mut alpha = ('a'..).into_iter().map(|c| c.to_string());
 
-                    if let Entry::$target(data) = entry {
-                        $(
-                            assert_eq!(alpha.next().unwrap(), &*data.$req);
-                        )+
-                        assert_eq!("value", &*data.optional["test"]);
-                    } else {
-                        panic!("Not the correct entry type!");
-                    }
+                    $(
+                        let expected = alpha.next().unwrap();
+                        let field = entry.get_field(stringify!($req)).unwrap();
+                        assert_eq!(expected, field.as_ref());
+                    )+
                 }
 
             }
@@ -307,7 +236,7 @@ macro_rules! entry_impl {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Other {
     cite: String,
-    kind: String,
+    kind: Cow<'static, str>,
     title: QuotedString,
     optional: HashMap<String, QuotedString>,
 }
@@ -319,10 +248,12 @@ impl Other {
         &self.kind
     }
 
+    /// Creates a new [`Resolver`] for this type to ensure that the required fields
+    /// are set before the entry type can be built.
     #[must_use]
-    fn resolver(kind: String) -> Resolver {
+    pub fn resolver(kind: String) -> Resolver {
         Resolver {
-            target: EntryKind::Other(kind.into()),
+            kind: Cow::Owned(kind),
             cite: None,
             req: vec!["title"],
             fields: HashMap::new(),
@@ -335,7 +266,7 @@ impl Other {
     #[must_use]
     pub fn resolver_with_cite<S: Into<String>>(kind: String, cite: S) -> Resolver {
         Resolver {
-            target: EntryKind::Other(kind.into()),
+            kind: Cow::Owned(kind),
             cite: Some(cite.into()),
             req: vec!["title"],
             fields: HashMap::new(),
@@ -343,10 +274,10 @@ impl Other {
         }
     }
 
-    fn resolve(mut resolver: Resolver) -> Entry {
-        Entry::Other(Other {
+    fn resolve(mut resolver: Resolver) -> Box<dyn EntryExt> {
+        Box::new(Other {
             cite: resolver.cite().to_string(),
-            kind: resolver.target.to_string(),
+            kind: resolver.kind,
             title: resolver.fields.remove("title").unwrap(),
             optional: resolver.fields,
         })
@@ -364,13 +295,32 @@ impl Other {
     }
 }
 
-impl FieldQuery for Other {
+impl EntryExt for Other {
+    fn kind(&self) -> &str {
+        &self.kind
+    }
+
     fn get_field(&self, name: &str) -> Option<&QuotedString> {
         let normal_name = name.to_lowercase();
         match normal_name.as_str() {
             "title" => Some(&self.title),
             s => self.optional.get(s),
         }
+    }
+
+    fn fields(&self) -> Vec<Field<'_>> {
+        let field = Field::from(("title", &self.title));
+        let mut fields = vec![field];
+        fields.extend(self.optional.iter().map(Field::from));
+        fields
+    }
+
+    fn cite(&self) -> Cow<'_, str> {
+        Cow::Borrowed(&self.cite)
+    }
+
+    fn set_cite(&mut self, cite: String) -> String {
+        std::mem::replace(&mut self.cite, cite)
     }
 }
 

@@ -1,8 +1,8 @@
 use std::{borrow::Cow, collections::HashMap};
 
-use crate::ast::{FieldQuery, QuotedString};
+use crate::ast::{Field, QuotedString};
 
-use super::{Entry, EntryKind};
+use super::EntryExt;
 
 /// A general `Entry` resolver that allows for retrying resolves of entries multiple times at runtime.
 ///
@@ -12,9 +12,9 @@ use super::{Entry, EntryKind};
 /// # Examples
 ///
 /// ```
-/// use seb::ast::{Entry, EntryKind, Resolver, QuotedString};
+/// use seb::ast::{self, Resolver, QuotedString};
 ///
-/// let resolver = Entry::resolver_with_cite(EntryKind::Manual, "cite_key");
+/// let resolver = ast::Manual::resolver_with_cite("cite_key");
 ///
 /// // manual only requires the `title` field to be valid
 /// assert_eq!(&["title"][..], resolver.required_fields().collect::<Vec<_>>());
@@ -31,64 +31,20 @@ use super::{Entry, EntryKind};
 #[derive(Debug)]
 #[cfg_attr(test, derive(Clone, PartialEq))]
 pub struct Resolver {
-    pub(super) target: EntryKind<'static>,
+    pub(super) kind: Cow<'static, str>,
     pub(super) cite: Option<String>,
     pub(super) req: Vec<&'static str>,
     pub(super) fields: HashMap<String, QuotedString>,
-    pub(super) entry_resolve: fn(Self) -> Entry,
+    pub(super) entry_resolve: fn(Self) -> Box<dyn EntryExt>,
 }
 
 impl Resolver {
-    pub(crate) fn new(
-        kind: EntryKind<'static>,
-        cite: Option<String>,
-        entry_resolve: fn(Self) -> Entry,
-    ) -> Self {
-        let req = kind
-            .required_fields()
-            .iter()
-            .map(std::ops::Deref::deref)
-            .collect();
-
-        Self {
-            target: kind,
-            cite,
-            req,
-            fields: HashMap::default(),
-            entry_resolve,
-        }
-    }
-    /// Returns the cite key for the entry being built.
-    ///
-    /// The cite key may either be a known value given to the resolver or will be generated using
-    /// the `author` and `year` field if available.
-    #[must_use]
-    pub fn cite(&self) -> Cow<'_, str> {
-        if let Some(cite) = &self.cite {
-            Cow::Borrowed(cite.as_str())
-        } else {
-            let author = self.get_field("author").map_or_else(
-                || "Unknown".to_owned(),
-                |qs| {
-                    let mut s = qs.to_string();
-                    s.retain(|c| !c.is_whitespace());
-                    s
-                },
-            );
-
-            let year = self
-                .get_field("year")
-                .map_or_else(|| "year".to_owned(), |qs| qs.to_string());
-            Cow::Owned(format!("{author}{year}"))
-        }
-    }
-
     /// Build an entry from the fields added in this resolver.
     ///
     /// # Errors
     /// Returns `Err(Self)` when the required fields have not been set to make a valid [`Entry`],
     /// returning `Self` allows for the user to retry.
-    pub fn resolve(self) -> Result<Entry, Self> {
+    pub fn resolve(self) -> Result<Box<dyn EntryExt>, Self> {
         if self.req.is_empty() {
             Ok((self.entry_resolve)(self))
         } else {
@@ -103,9 +59,9 @@ impl Resolver {
     ///
     /// ```
     /// use std::borrow::Cow;
-    /// use seb::ast::{Entry, EntryKind, QuotedString};
+    /// use seb::ast::{self, QuotedString};
     ///
-    /// let mut resolver = Entry::resolver_with_cite(EntryKind::Manual, "cite");
+    /// let mut resolver = ast::Manual::resolver_with_cite("cite");
     /// assert_eq!(Some("title"), resolver.required_fields().next());
     ///
     /// // set the `title` field then check if the required_fields is returning an empty iter.
@@ -135,9 +91,9 @@ impl Resolver {
     /// # Examples
     ///
     /// ```
-    /// use seb::ast::{Entry, EntryKind, QuotedString};
+    /// use seb::ast::{self, QuotedString};
     ///
-    /// let resolver = Entry::resolver(EntryKind::Manual);
+    /// let resolver = ast::Manual::resolver();
     /// let mut resolver = resolver.resolve().expect_err("Missing title field!");
     ///
     /// // we know that title is the only
@@ -182,12 +138,57 @@ impl Resolver {
     }
 }
 
+impl EntryExt for Resolver {
+    fn kind(&self) -> &str {
+        &self.kind
+    }
+
+    fn get_field(&self, name: &str) -> Option<&QuotedString> {
+        self.fields.get(name)
+    }
+
+    fn fields(&self) -> Vec<Field<'_>> {
+        self.fields.iter().map(Field::from).collect()
+    }
+
+    /// Returns the cite key for the entry being built.
+    ///
+    /// The cite key may either be a known value given to the resolver or will be generated using
+    /// the `author` and `year` field if available.
+    fn cite(&self) -> Cow<'_, str> {
+        if let Some(cite) = &self.cite {
+            Cow::Borrowed(cite.as_str())
+        } else {
+            let author = self.get_field("author").map_or_else(
+                || "Unknown".to_owned(),
+                |qs| {
+                    let mut s = qs.to_string();
+                    s.retain(|c| !c.is_whitespace());
+                    s
+                },
+            );
+
+            let year = self
+                .get_field("year")
+                .map_or_else(|| "year".to_owned(), |qs| qs.to_string());
+            Cow::Owned(format!("{author}{year}"))
+        }
+    }
+
+    fn set_cite(&mut self, cite: String) -> String {
+        self.cite
+            .as_mut()
+            .map(|c| std::mem::replace(c, cite))
+            .unwrap_or_default()
+    }
+}
+
 impl std::fmt::Display for Resolver {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(
             f,
             "error: missing required fields in {} entry\nfound:",
-            self.target
+            self.kind
         )?;
 
         for set_field in &self.fields {
@@ -242,12 +243,6 @@ impl<'a> ResolverEntry<'a> {
     #[allow(clippy::missing_panics_doc)] // see key field comment
     pub fn key(&self) -> &str {
         self.key.as_ref().unwrap()
-    }
-}
-
-impl FieldQuery for Resolver {
-    fn get_field(&self, name: &str) -> Option<&QuotedString> {
-        self.fields.get(name)
     }
 }
 
