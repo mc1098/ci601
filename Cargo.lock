@@ -958,6 +958,7 @@ dependencies = [
  "biblatex",
  "log",
  "reqwest",
+ "seb-macro",
  "serde",
  "serde_json",
 ]
@@ -975,6 +976,15 @@ dependencies = [
  "log",
  "seb",
  "stderrlog",
+]
+
+[[package]]
+name = "seb-macro"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
