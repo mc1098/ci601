@@ -122,16 +122,15 @@ mod tests {
         assert_eq!(None, resolver.checked_remove(0).map(|_| ()));
     }
 
+    fn manual_entry() -> Box<dyn EntryExt> {
+        let mut resolver = Manual::resolver_with_cite("cite");
+        resolver.set_field("title", "Title");
+        resolver.resolve().unwrap()
+    }
+
     #[test]
     fn some_entry_on_checked_removed_with_single_resolved_entry() {
-        let manual = Manual {
-            kind: ast::kind::Manual.into(),
-            cite: "cite".to_owned(),
-            title: "Title".into(),
-            optional: std::collections::HashMap::default(),
-        };
-
-        let entry = Box::new(manual);
+        let entry = manual_entry();
 
         let mut resolver = BiblioResolver {
             failed: false,
@@ -168,19 +167,13 @@ mod tests {
 
     #[test]
     fn checked_remove_indexes_resolved_before_unresolved() {
-        let entry = Manual {
-            kind: ast::kind::Manual.into(),
-            cite: "cite".to_owned(),
-            title: "Title".into(),
-            optional: std::collections::HashMap::default(),
-        };
         let resolver = ast::Article::resolver();
 
         // use closure so we can create new BiblioResolver after altering internal state
         let create_biblio_resolver_with_both = || BiblioResolver {
             failed: false,
             resolvers: vec![resolver.clone()],
-            entries: vec![Box::new(entry.clone())],
+            entries: vec![manual_entry()],
         };
 
         let mut biblio_resolver = create_biblio_resolver_with_both();
@@ -229,18 +222,13 @@ mod tests {
 
     #[test]
     fn iter_to_query_fields() {
-        let entry = Manual {
-            kind: ast::kind::Manual.into(),
-            cite: "cite".to_owned(),
-            title: "Title".into(),
-            optional: std::collections::HashMap::default(),
-        };
+        let entry = manual_entry();
         let resolver = ast::Article::resolver();
 
         let biblio_resolver = BiblioResolver {
             failed: false,
             resolvers: vec![resolver],
-            entries: vec![Box::new(entry)],
+            entries: vec![entry],
         };
 
         let mut iter = biblio_resolver.iter();

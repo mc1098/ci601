@@ -23,6 +23,8 @@ use log::trace;
 
 type Client = reqwest::blocking::Client;
 
+pub use seb_macro::Entry;
+
 /// Search bibliographic entries by `doi` using the default API.
 ///
 /// Searching by `doi` should only return a single [Entry][E] but a [`Vec`] is used to provide a
