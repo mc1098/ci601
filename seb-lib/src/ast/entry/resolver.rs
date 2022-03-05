@@ -31,11 +31,16 @@ use super::EntryExt;
 #[derive(Debug)]
 #[cfg_attr(test, derive(Clone, PartialEq))]
 pub struct Resolver {
-    pub(super) kind: Cow<'static, str>,
-    pub(super) cite: Option<String>,
-    pub(super) req: Vec<&'static str>,
-    pub(super) fields: HashMap<String, QuotedString>,
-    pub(super) entry_resolve: fn(Self) -> Box<dyn EntryExt>,
+    #[doc(hidden)]
+    pub kind: Cow<'static, str>,
+    #[doc(hidden)]
+    pub cite: Option<String>,
+    #[doc(hidden)]
+    pub req: Vec<&'static str>,
+    #[doc(hidden)]
+    pub fields: HashMap<String, QuotedString>,
+    #[doc(hidden)]
+    pub entry_resolve: fn(Self) -> Box<dyn EntryExt>,
 }
 
 impl Resolver {
