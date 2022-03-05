@@ -10,6 +10,8 @@
 #![allow(clippy::module_name_repetitions)]
 #![doc = include_str!("../README.md")]
 
+extern crate self as seb;
+
 mod api;
 pub mod ast;
 mod error;
@@ -23,6 +25,86 @@ use log::trace;
 
 type Client = reqwest::blocking::Client;
 
+/// Derive macro for producing all the requirements of an Entry type, most notably implementing the
+/// `EntryExt` trait and the resolver.
+///
+/// The `Entry` macro has some requirements:
+/// - The derived item must be a named struct
+/// - Struct must also derive `Debug` due to `EntryExt`
+/// - The derived struct *MUST* have a field named cite with the type `String`
+/// - The derived struct *MUST* have a field named optional with the type [`HashMap<String,
+/// QuotedString>`]
+///
+/// `Entry` macro supports the `kind` attribute which allows for tagging a field as representing
+/// the kind type or used on the struct to provide a static string for the kind. If the `kind`
+/// attribute is not used then the struct name is normalized to lowercase and is used a static
+/// string to represent the kind of entry.
+///
+/// # Examples
+///
+/// ```
+/// use std::collections::HashMap;
+/// use seb::{ast::QuotedString, Entry};
+///
+/// #[derive(Debug, Entry)]
+/// struct MyExampleEntry {
+///     // fields required for the Entry macro
+///     cite: String,
+///     optional: HashMap<String, QuotedString>,
+///     // required fields of the entry itself.
+///
+///     // Authors of the entry.
+///     author: QuotedString,
+///     // Title of the entry.
+///     title: QuotedString,
+/// }
+/// ```
+/// The example above derives the `EntryExt` and the value of the `EntryExt::kind` would be
+/// "myexampleentry" as this is derived from the struct name and then normalized to lowercase.
+///
+/// ```
+/// use std::collections::HashMap;
+/// use seb::{ast::QuotedString, Entry};
+///
+/// #[derive(Debug, Entry)]
+/// #[kind = "custom entry"]
+/// struct MyExampleEntry {
+///     // fields required for the Entry macro
+///     cite: String,
+///     optional: HashMap<String, QuotedString>,
+///     // required fields of the entry itself.
+///
+///     // Authors of the entry.
+///     author: QuotedString,
+///     // Title of the entry.
+///     title: QuotedString,
+/// }
+/// ```
+/// The example above derives the `EntryExt` and the value of the `EntryExt::kind` would be
+/// "custom entry" which
+///
+/// ```
+/// use std::{borrow::Cow, collections::HashMap};
+/// use seb::{ast::QuotedString, Entry};
+///
+/// #[derive(Debug, Entry)]
+/// struct MyExampleEntry {
+///     // dynamic kind string
+///     #[kind]
+///     kind: Cow<'static, str>,
+///     // fields required for the Entry macro
+///     cite: String,
+///     optional: HashMap<String, QuotedString>,
+///     // required fields of the entry itsefl.
+///
+///     /// Authors of the entry.
+///     author: QuotedString,
+///     /// Title of the entry.
+///     title: QuotedString,
+/// }
+/// ```
+/// The example above derives the `EntryExt` and the value of the `EntryExt::kind` would be
+/// the value of the `kind` field tagged by the kind attribute.
 pub use seb_macro::Entry;
 
 /// Search bibliographic entries by `doi` using the default API.

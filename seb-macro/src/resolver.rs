@@ -198,7 +198,7 @@ impl DeriveEntryInput {
 
             #kind_global
 
-            impl EntryExt for #entry_name {
+            impl ::seb::ast::EntryExt for #entry_name {
                 fn kind(&self) -> &::std::primitive::str {
                     #kind_str
                 }
@@ -222,12 +222,12 @@ impl DeriveEntryInput {
                     &self.title
                 }
 
-                fn fields(&self) -> ::std::vec::Vec<Field<'_>> {
-                    let mut fields: ::std::vec::Vec<Field<'_>> = [#(#field_tuple,)*]
+                fn fields(&self) -> ::std::vec::Vec<::seb::ast::Field<'_>> {
+                    let mut fields: ::std::vec::Vec<::seb::ast::Field<'_>> = [#(#field_tuple,)*]
                         .into_iter()
-                        .map(Field::from)
+                        .map(::seb::ast::Field::from)
                         .collect();
-                    fields.extend(self.optional.iter().map(Field::from));
+                    fields.extend(self.optional.iter().map(::seb::ast::Field::from));
                     fields
                 }
 
@@ -249,12 +249,12 @@ impl DeriveEntryInput {
                 ///
                 /// Does not set the cite value of the resolver so will be generated based on
                 /// the field values.
-                pub fn resolver() -> Resolver {
-                     Resolver {
+                pub fn resolver() -> ::seb::ast::Resolver {
+                     ::seb::ast::Resolver {
                         kind: ::std::borrow::Cow::Borrowed(#kind),
                         cite: None,
-                        fields: ::std::collections::HashMap::default(),
                         req: #req_field_array.into_iter().collect(),
+                        fields: ::std::collections::HashMap::default(),
                         entry_resolve: Self::resolve,
                     }
 
@@ -262,20 +262,22 @@ impl DeriveEntryInput {
 
                 /// Creates a new [`Resolver`] for this type to ensure that the required fields
                 /// are set before the entry type can be built.
-                pub fn resolver_with_cite<S>(cite: S) -> Resolver
+                pub fn resolver_with_cite<S>(cite: S) -> ::seb::ast::Resolver
                 where
                     S: ::std::convert::Into::<::std::string::String>,
                 {
-                     Resolver {
+                     ::seb::ast::Resolver {
                         kind: ::std::borrow::Cow::Borrowed(#kind),
                         cite: Some(cite.into()),
-                        fields: ::std::collections::HashMap::default(),
                         req: #req_field_array.into_iter().collect(),
+                        fields: ::std::collections::HashMap::default(),
                         entry_resolve: Self::resolve,
                     }
                 }
 
-                fn resolve(mut resolver: Resolver) -> ::std::boxed::Box::<dyn EntryExt> {
+                fn resolve(mut resolver: ::seb::ast::Resolver) -> ::std::boxed::Box::<dyn ::seb::ast::EntryExt> {
+                    use ::seb::ast::EntryExt;
+
                     let cite = resolver.cite().to_string();
                     let entry = #entry_name {
                         cite,
@@ -304,35 +306,37 @@ impl DeriveEntryInput {
                 ///
                 /// Does not set the cite value of the resolver so will be generated based on
                 /// the field values.
-                pub fn resolver<S>(kind: S) -> Resolver
+                pub fn resolver<S>(kind: S) -> ::seb::ast::Resolver
                 where
                     S: ::std::convert::Into<::std::string::String>,
                 {
-                    Resolver {
+                    ::seb::ast::Resolver {
                         kind: ::std::borrow::Cow::Owned(kind.into()),
                         cite: None,
-                        fields: ::std::collections::HashMap::default(),
                         req: #req_field_array.into_iter().collect(),
+                        fields: ::std::collections::HashMap::default(),
                         entry_resolve: Self::resolve,
                     }
                 }
 
                 /// Creates a new [`Resolver`] for this type to ensure that the required fields
                 /// are set before the entry type can be built.
-                pub fn resolver_with_cite<S>(kind: S, cite: S) -> Resolver
+                pub fn resolver_with_cite<S>(kind: S, cite: S) -> ::seb::ast::Resolver
                 where
                     S: ::std::convert::Into<::std::string::String>,
                 {
-                    Resolver {
+                    ::seb::ast::Resolver {
                         kind: ::std::borrow::Cow::Owned(kind.into()),
                         cite: Some(cite.into()),
-                        fields: ::std::collections::HashMap::default(),
                         req: #req_field_array.into_iter().collect(),
+                        fields: ::std::collections::HashMap::default(),
                         entry_resolve: Self::resolve,
                     }
                 }
 
-                fn resolve(mut resolver: Resolver) -> ::std::boxed::Box::<dyn EntryExt> {
+                fn resolve(mut resolver: ::seb::ast::Resolver) -> ::std::boxed::Box::<dyn ::seb::ast::EntryExt> {
+                    use ::seb::ast::EntryExt;
+
                     let cite = resolver.cite().to_string();
                     let entry = #entry_name {
                         #kind_ident: resolver.kind,
@@ -368,6 +372,7 @@ impl DeriveEntryInput {
             #[cfg(test)]
             mod #test_mod_name {
                 use super::#entry_name;
+                use ::seb::ast::EntryExt;
 
                 #[test]
                 fn resolver_override_cite() {
