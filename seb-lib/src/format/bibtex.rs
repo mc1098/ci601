@@ -315,6 +315,56 @@ mod tests {
         assert_eq!(parsed, parsed_two);
     }
 
+    macro_rules! field {
+        ($name:literal: $value:literal) => {
+            ast::Field {
+                name: Cow::Borrowed($name),
+                value: Cow::Owned($value.into()),
+            }
+        };
+        ($name:literal: $value:ident) => {
+            ast::Field {
+                name: Cow::Borrowed($name),
+                value: Cow::Owned($value.into()),
+            }
+        };
+    }
+
+    #[test]
+    fn compose_month_name_field_in_short_name_without_braces() {
+        let long_month_names = [
+            ("jan", "January"),
+            ("feb", "Febuary"),
+            ("mar", "march"), // shouldn't matter what the case is
+            ("oct", "oCtober"),
+            ("dec", "December"),
+        ];
+
+        check_each_field_with_expected(long_month_names);
+    }
+
+    #[test]
+    fn compose_month_num_field_in_short_name_without_braces() {
+        let month_nums = [
+            ("jan", "01"),
+            ("apr", "4"),
+            ("may", "05"),
+            ("aug", "8"),
+            ("nov", "11"),
+        ];
+
+        check_each_field_with_expected(month_nums);
+    }
+
+    fn check_each_field_with_expected<const N: usize>(slice: [(&'static str, &'static str); N]) {
+        for (expected_month, month_value) in slice {
+            let field = field! { "month": month_value };
+            let actual = compose_field(&field);
+
+            assert_eq!(format!("month = {expected_month}"), actual);
+        }
+    }
+
     #[test]
     fn compose_fields_to_bibtex() {
         let fields = fields();
