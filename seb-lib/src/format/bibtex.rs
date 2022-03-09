@@ -100,13 +100,43 @@ fn compose_fields(fields: &[ast::Field<'_>]) -> String {
     fields
         .iter()
         .map(|field| {
-            format!(
-                "    {} = {{{}}},\n",
-                field.name.replace('_', ""),
-                field.value.map_quoted(bibtex_esc)
-            )
+            let field = compose_field(field);
+            format!("    {field},\n")
+            // format!(
+            //     "    {} = {{{}}},\n",
+            //     field.name.replace('_', ""),
+            //     field.value.map_quoted(bibtex_esc)
+            // )
         })
         .collect()
+}
+
+fn compose_field(field: &ast::Field<'_>) -> String {
+    match field.name.replace('_', "").as_str() {
+        "month" => to_short_month(&field.value),
+        name => format!("{name} = {{{}}}", field.value.map_quoted(bibtex_esc)),
+    }
+}
+
+fn to_short_month(month: &QuotedString) -> String {
+    let value = match month.parse() {
+        Ok(1) => "jan",
+        Ok(2) => "feb",
+        Ok(3) => "mar",
+        Ok(4) => "apr",
+        Ok(5) => "may",
+        Ok(6) => "jun",
+        Ok(7) => "jul",
+        Ok(8) => "aug",
+        Ok(9) => "sep",
+        Ok(10) => "oct",
+        Ok(11) => "nov",
+        Ok(12) => "dec",
+        _ => month.get(0..3).expect("invalid month value"),
+    }
+    .to_lowercase();
+
+    format!("month = {value}")
 }
 
 fn resolver_for_type(entry_type: &biblatex::EntryType, cite: String) -> Resolver {
@@ -313,6 +343,56 @@ mod tests {
             .expect("second parse of composed bibtex1 should be valid");
 
         assert_eq!(parsed, parsed_two);
+    }
+
+    macro_rules! field {
+        ($name:literal: $value:literal) => {
+            ast::Field {
+                name: Cow::Borrowed($name),
+                value: Cow::Owned($value.into()),
+            }
+        };
+        ($name:literal: $value:ident) => {
+            ast::Field {
+                name: Cow::Borrowed($name),
+                value: Cow::Owned($value.into()),
+            }
+        };
+    }
+
+    #[test]
+    fn compose_month_name_field_in_short_name_without_braces() {
+        let long_month_names = [
+            ("jan", "January"),
+            ("feb", "Febuary"),
+            ("mar", "march"), // shouldn't matter what the case is
+            ("oct", "oCtober"),
+            ("dec", "December"),
+        ];
+
+        check_each_field_with_expected(long_month_names);
+    }
+
+    #[test]
+    fn compose_month_num_field_in_short_name_without_braces() {
+        let month_nums = [
+            ("jan", "01"),
+            ("apr", "4"),
+            ("may", "05"),
+            ("aug", "8"),
+            ("nov", "11"),
+        ];
+
+        check_each_field_with_expected(month_nums);
+    }
+
+    fn check_each_field_with_expected<const N: usize>(slice: [(&'static str, &'static str); N]) {
+        for (expected_month, month_value) in slice {
+            let field = field! { "month": month_value };
+            let actual = compose_field(&field);
+
+            assert_eq!(format!("month = {expected_month}"), actual);
+        }
     }
 
     #[test]
