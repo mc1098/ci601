@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{
     ast::{self, Biblio, BiblioResolver, QuotedString, Resolver},
     Error, ErrorKind,
@@ -31,11 +33,23 @@ impl Format for BibTex {
     }
 
     fn compose(biblio: &Biblio) -> Self {
-        let s = biblio
+        let mut map = HashMap::new();
+
+        biblio
             .entries()
-            .map(Self::compose_entry)
-            .collect::<String>();
-        Self(s)
+            .map(|entry| (compose_variant(entry), Self::compose_entry(entry)))
+            .for_each(|(kind, entry)| {
+                map.entry(kind)
+                    .and_modify(|s: &mut String| s.push_str(&entry))
+                    .or_insert(format!("% {kind}\n{entry}\n"));
+            });
+
+        let mut pairs = map.into_iter().collect::<Vec<_>>();
+        pairs.sort_by_key(|(k, _)| *k);
+
+        let bib = pairs.into_iter().map(|(_, groups)| groups).collect();
+
+        Self(bib)
     }
 
     fn compose_entry(entry: &dyn ast::EntryExt) -> String {
@@ -337,10 +351,10 @@ mod tests {
         let result = BibTex::compose(&references);
 
         // indents and newlines are important in this string so don't format!
-        let expected = "@manual{entry1,
+        let expected = "% manual\n@manual{entry1,
     title = {Test},
     author = {Me},
-}\n";
+}\n\n";
 
         assert_eq!(expected, result.raw());
     }
