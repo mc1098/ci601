@@ -100,13 +100,43 @@ fn compose_fields(fields: &[ast::Field<'_>]) -> String {
     fields
         .iter()
         .map(|field| {
-            format!(
-                "    {} = {{{}}},\n",
-                field.name.replace('_', ""),
-                field.value.map_quoted(bibtex_esc)
-            )
+            let field = compose_field(field);
+            format!("    {field},\n")
+            // format!(
+            //     "    {} = {{{}}},\n",
+            //     field.name.replace('_', ""),
+            //     field.value.map_quoted(bibtex_esc)
+            // )
         })
         .collect()
+}
+
+fn compose_field(field: &ast::Field<'_>) -> String {
+    match field.name.replace('_', "").as_str() {
+        "month" => to_short_month(&field.value),
+        name => format!("{name} = {{{}}}", field.value.map_quoted(bibtex_esc)),
+    }
+}
+
+fn to_short_month(month: &QuotedString) -> String {
+    let value = match month.parse() {
+        Ok(1) => "jan",
+        Ok(2) => "feb",
+        Ok(3) => "mar",
+        Ok(4) => "apr",
+        Ok(5) => "may",
+        Ok(6) => "jun",
+        Ok(7) => "jul",
+        Ok(8) => "aug",
+        Ok(9) => "sep",
+        Ok(10) => "oct",
+        Ok(11) => "nov",
+        Ok(12) => "dec",
+        _ => month.get(0..3).expect("invalid month value"),
+    }
+    .to_lowercase();
+
+    format!("month = {value}")
 }
 
 fn resolver_for_type(entry_type: &biblatex::EntryType, cite: String) -> Resolver {
