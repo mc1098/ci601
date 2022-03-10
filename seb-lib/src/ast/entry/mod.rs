@@ -237,13 +237,3 @@ pub struct Other {
     title: QuotedString,
     optional: HashMap<String, QuotedString>,
 }
-
-#[test]
-fn dynamic_kind_string() {
-    let mut resolver = Other::resolver("custom");
-    resolver.set_field("title", "title");
-
-    let entry = resolver.resolve().expect("All fields have been set");
-
-    assert_eq!("custom", entry.kind());
-}

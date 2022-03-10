@@ -14,10 +14,10 @@ enum Kind {
 }
 
 impl Kind {
-    fn to_string_token(&self) -> proc_macro2::TokenStream {
+    fn to_lit_str(&self) -> syn::LitStr {
         match self {
-            Self::Static(lit) => quote! { #lit },
-            Self::Dynamic(ident) => quote! { self.#ident.as_ref() },
+            Self::Static(lit) => lit.clone(),
+            Self::Dynamic(ident) => syn::LitStr::new(&ident.to_string(), ident.span()),
         }
     }
 }
@@ -192,7 +192,7 @@ impl DeriveEntryInput {
             Default::default()
         };
 
-        let kind_str = kind.to_string_token();
+        let kind_str = kind.to_lit_str();
 
         quote! {
 
