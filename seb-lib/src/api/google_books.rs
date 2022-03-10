@@ -193,7 +193,7 @@ mod tests {
             .expect("Valid json should produce a single entry");
 
         assert_eq!("test", &**entry.get_field("isbn").unwrap());
-        assert_eq!(ast::Book::BOOK, entry.kind());
+        assert_eq!(ast::kind::Book, entry.kind());
     }
 
     #[test]

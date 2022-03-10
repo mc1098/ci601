@@ -76,18 +76,18 @@ impl Format for BibTex {
 
 fn compose_variant(entry: &dyn ast::EntryExt) -> &str {
     match entry.kind() {
-        ast::Article::ARTICLE => "article",
-        ast::Book::BOOK => "book",
-        ast::Booklet::BOOKLET => "booklet",
-        ast::BookChapter::BOOKCHAPTER | ast::BookPages::BOOKPAGES => "inbook",
-        ast::BookSection::BOOKSECTION => "incollection",
-        ast::InProceedings::INPROCEEDINGS => "inproceedings",
-        ast::Manual::MANUAL => "manual",
-        ast::MasterThesis::MASTERTHESIS => "masterthesis",
-        ast::PhdThesis::PHDTHESIS => "phdthesis",
-        ast::Proceedings::PROCEEDINGS => "proceedings",
-        ast::TechReport::TECHREPORT => "techreport",
-        ast::Unpublished::UNPUBLISHED => "unpublished",
+        ast::kind::Article => "article",
+        ast::kind::Book => "book",
+        ast::kind::Booklet => "booklet",
+        ast::kind::BookChapter | ast::kind::BookPages => "inbook",
+        ast::kind::BookSection => "incollection",
+        ast::kind::InProceedings => "inproceedings",
+        ast::kind::Manual => "manual",
+        ast::kind::MasterThesis => "masterthesis",
+        ast::kind::PhdThesis => "phdthesis",
+        ast::kind::Proceedings => "proceedings",
+        ast::kind::TechReport => "techreport",
+        ast::kind::Unpublished => "unpublished",
         s => s,
     }
 }
@@ -261,7 +261,7 @@ impl From<biblatex::Chunks> for QuotedString {
 #[cfg(test)]
 mod tests {
 
-    use std::borrow::Cow;
+    use std::{borrow::Cow, collections::HashMap};
 
     use super::*;
 
@@ -273,12 +273,12 @@ mod tests {
     }
 
     fn entries() -> Vec<Box<dyn ast::EntryExt>> {
-        let mut resolver = ast::Manual::resolver_with_cite("entry1");
-        resolver.set_field("title", "Test");
-        resolver.set_field("author", "Me");
-        let entry = resolver.resolve().unwrap();
-
-        vec![entry]
+        vec![Box::new(ast::Manual {
+            kind: ast::kind::Manual.into(),
+            cite: "entry1".to_owned(),
+            title: "Test".into(),
+            optional: HashMap::from([("author".to_owned(), "Me".into())]),
+        })]
     }
 
     #[test]

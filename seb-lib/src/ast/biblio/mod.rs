@@ -126,15 +126,11 @@ impl Biblio {
 #[cfg(test)]
 mod tests {
 
+    use std::collections::HashMap;
+
     use crate::ast::Manual;
 
     use super::*;
-
-    fn manual_entry(cite: &str) -> Box<dyn EntryExt> {
-        let mut resolver = Manual::resolver_with_cite(cite);
-        resolver.set_field("title", "Title");
-        resolver.resolve().unwrap()
-    }
 
     #[test]
     fn insertion_of_entry_makes_biblio_dirty() {
@@ -142,8 +138,14 @@ mod tests {
 
         assert!(!biblio.dirty(), "Biblio::default should be clean");
 
-        let entry = manual_entry("cite");
-        biblio.insert(entry);
+        let manual = Manual {
+            kind: crate::ast::kind::Manual.into(),
+            cite: "cite".to_owned(),
+            title: "Title".into(),
+            optional: HashMap::default(),
+        };
+
+        biblio.insert(Box::new(manual));
 
         assert!(
             biblio.dirty(),
@@ -172,8 +174,13 @@ mod tests {
 
     #[test]
     fn remove_entry_in_single_biblio() {
-        let entry = manual_entry("cite");
-        let mut biblio = Biblio::new(vec![entry]);
+        let manual = Manual {
+            kind: crate::ast::kind::Manual.into(),
+            cite: "cite".to_owned(),
+            title: "Title".into(),
+            optional: HashMap::default(),
+        };
+        let mut biblio = Biblio::new(vec![Box::new(manual)]);
 
         assert!(biblio.remove("cite"), "Should remove the only entry");
         assert!(biblio.dirty());
@@ -183,28 +190,23 @@ mod tests {
         );
     }
 
-    fn manual_entry_with_options<const N: usize>(
-        cite: &str,
-        options: [(&str, QuotedString); N],
-    ) -> Box<dyn EntryExt> {
-        let mut resolver = Manual::resolver_with_cite(cite);
-        for (k, v) in options {
-            resolver.set_field(k, v);
-        }
-        resolver.resolve().unwrap()
-    }
-
     #[test]
     fn false_on_duplicate_field() {
-        let square_quote = ['{', '}'];
+        let square_quote = |c: char| matches!(c, '{' | '}');
         let title = QuotedString::from_quoted(
             "{Quicksort}: A Fast Sorting Scheme in Theory and Practice",
-            square_quote,
+            &square_quote,
         );
         let value = "test".into();
-
-        let entry = manual_entry_with_options("Edelkamp_2019", [("title", title), ("doi", value)]);
-        let references = Biblio::new(vec![entry]);
+        let mut optional = HashMap::new();
+        optional.insert("doi".to_owned(), value);
+        let entry = Manual {
+            kind: crate::ast::kind::Manual.into(),
+            cite: "Edelkamp_2019".to_owned(),
+            title,
+            optional,
+        };
+        let references = Biblio::new(vec![Box::new(entry)]);
 
         assert!(references.contains_field("doi", |f| &**f == "test"));
         assert!(!references.contains_field("doi", |f| &**f == "something else"));
