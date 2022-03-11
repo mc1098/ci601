@@ -4,39 +4,25 @@ mod resolver;
 
 pub use resolver::BiblioResolver;
 
-use super::{EntryExt, QuotedString, Resolver};
+use super::{Entry, FieldQuery, QuotedString, Resolver};
 
 /// An intermediate representation of a bibliography which is not tied to a specific end format.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq)]
+#[cfg_attr(test, derive(Clone))]
 pub struct Biblio {
     dirty: bool,
-    entries: HashMap<String, Box<dyn EntryExt>>,
-}
-
-impl PartialEq for Biblio {
-    fn eq(&self, other: &Self) -> bool {
-        for (cite, entry) in &self.entries {
-            if let Some(other_entry) = other.entries.get(cite) {
-                for field in entry.fields() {
-                    if other_entry.get_field(&field.name).is_none() {
-                        return false;
-                    }
-                }
-            }
-        }
-        self.dirty == other.dirty
-    }
+    entries: HashMap<String, Entry>,
 }
 
 impl Biblio {
     /// Create a new [`Biblio`] from a list of bibliography entries.
     #[must_use]
-    pub fn new(entries: Vec<Box<dyn EntryExt>>) -> Self {
+    pub fn new(entries: Vec<Entry>) -> Self {
         Self {
             dirty: false,
             entries: entries
                 .into_iter()
-                .map(|e| (e.cite().into_owned(), e))
+                .map(|e| (e.cite().to_owned(), e))
                 .collect(),
         }
     }
@@ -69,9 +55,9 @@ impl Biblio {
     }
 
     /// Insert a new [`Entry`].
-    pub fn insert(&mut self, entry: Box<dyn EntryExt>) {
+    pub fn insert(&mut self, entry: Entry) {
         self.dirty = true;
-        self.entries.insert(entry.cite().into_owned(), entry);
+        self.entries.insert(entry.cite().to_owned(), entry);
     }
 
     /// Remove the cite key and return the [`Entry`] value if they cite was found.
@@ -88,14 +74,14 @@ impl Biblio {
     }
 
     /// Return a reference to a slice of entries.
-    pub fn entries(&self) -> impl Iterator<Item = &dyn EntryExt> {
-        self.entries.values().map(AsRef::as_ref)
+    pub fn entries(&self) -> impl Iterator<Item = &Entry> {
+        self.entries.values()
     }
 
     /// Creates entries from a value.
     #[must_use]
     #[allow(clippy::missing_const_for_fn)] // drop is not const
-    pub fn into_entries(self) -> Vec<Box<dyn EntryExt>> {
+    pub fn into_entries(self) -> Vec<Entry> {
         self.entries.into_iter().map(|(_, v)| v).collect()
     }
 
@@ -126,15 +112,11 @@ impl Biblio {
 #[cfg(test)]
 mod tests {
 
+    use std::collections::HashMap;
+
     use crate::ast::Manual;
 
     use super::*;
-
-    fn manual_entry(cite: &str) -> Box<dyn EntryExt> {
-        let mut resolver = Manual::resolver_with_cite(cite);
-        resolver.set_field("title", "Title");
-        resolver.resolve().unwrap()
-    }
 
     #[test]
     fn insertion_of_entry_makes_biblio_dirty() {
@@ -142,8 +124,11 @@ mod tests {
 
         assert!(!biblio.dirty(), "Biblio::default should be clean");
 
-        let entry = manual_entry("cite");
-        biblio.insert(entry);
+        biblio.insert(Entry::Manual(Manual {
+            cite: "cite".to_owned(),
+            title: "Title".into(),
+            optional: HashMap::default(),
+        }));
 
         assert!(
             biblio.dirty(),
@@ -172,8 +157,11 @@ mod tests {
 
     #[test]
     fn remove_entry_in_single_biblio() {
-        let entry = manual_entry("cite");
-        let mut biblio = Biblio::new(vec![entry]);
+        let mut biblio = Biblio::new(vec![Entry::Manual(Manual {
+            cite: "cite".to_owned(),
+            title: "Title".into(),
+            optional: HashMap::default(),
+        })]);
 
         assert!(biblio.remove("cite"), "Should remove the only entry");
         assert!(biblio.dirty());
@@ -183,27 +171,21 @@ mod tests {
         );
     }
 
-    fn manual_entry_with_options<const N: usize>(
-        cite: &str,
-        options: [(&str, QuotedString); N],
-    ) -> Box<dyn EntryExt> {
-        let mut resolver = Manual::resolver_with_cite(cite);
-        for (k, v) in options {
-            resolver.set_field(k, v);
-        }
-        resolver.resolve().unwrap()
-    }
-
     #[test]
     fn false_on_duplicate_field() {
-        let square_quote = ['{', '}'];
+        let square_quote = |c: char| matches!(c, '{' | '}');
         let title = QuotedString::from_quoted(
             "{Quicksort}: A Fast Sorting Scheme in Theory and Practice",
-            square_quote,
+            &square_quote,
         );
         let value = "test".into();
-
-        let entry = manual_entry_with_options("Edelkamp_2019", [("title", title), ("doi", value)]);
+        let mut optional = HashMap::new();
+        optional.insert("doi".to_owned(), value);
+        let entry = Entry::Manual(Manual {
+            cite: "Edelkamp_2019".to_owned(),
+            title,
+            optional,
+        });
         let references = Biblio::new(vec![entry]);
 
         assert!(references.contains_field("doi", |f| &**f == "test"));

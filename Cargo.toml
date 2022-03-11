@@ -1,7 +1,5 @@
 [workspace]
 members = [
   "seb-cli",
-  "seb-lib",
-  "seb-macro",
+  "seb-lib"
 ]
-

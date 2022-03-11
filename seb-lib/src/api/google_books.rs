@@ -98,7 +98,7 @@ impl TryFrom<Book> for Resolver {
                 },
         } = book;
 
-        let mut resolver = ast::Book::resolver();
+        let mut resolver = ast::Entry::resolver(ast::EntryKind::Book);
 
         // date_parts = Year-Month-Day, where Day is not often used.
         let mut date_parts = published_date.split('-');
@@ -140,7 +140,7 @@ mod tests {
     use super::{GoogleModel, Item, VolumeInfo};
     use crate::{
         api::{assert_url, impl_text_producer, MockClient},
-        ast::{self, Resolver},
+        ast::{self, FieldQuery, Resolver},
         Error, ErrorKind,
     };
 
@@ -193,7 +193,7 @@ mod tests {
             .expect("Valid json should produce a single entry");
 
         assert_eq!("test", &**entry.get_field("isbn").unwrap());
-        assert_eq!(ast::Book::BOOK, entry.kind());
+        assert!(matches!(entry, crate::ast::Entry::Book(_)));
     }
 
     #[test]
@@ -232,7 +232,7 @@ mod tests {
         };
 
         let book = item.build("Ignore".to_owned());
-        let entry: Box<dyn ast::EntryExt> = Resolver::try_from(book)
+        let entry: ast::Entry = Resolver::try_from(book)
             .expect("Book is valid so will return a resolver")
             .resolve()
             .expect("Book should not fail to convert into an entry");

@@ -6,7 +6,7 @@ use std::marker::PhantomData;
 mod bibtex;
 
 use crate::{
-    ast::{Biblio, BiblioResolver, EntryExt},
+    ast::{Biblio, BiblioResolver, Entry},
     Error,
 };
 pub use bibtex::BibTex;
@@ -42,7 +42,7 @@ pub trait Format {
     ///
     /// This function should not fail fail as every [`Entry`] instance must be valid and every
     /// [`Format`] must correctly represent every valid [`Entry`].
-    fn compose_entry(entry: &dyn EntryExt) -> String;
+    fn compose_entry(entry: &Entry) -> String;
 
     /// The current [`Format`] in a raw [`String`].
     ///

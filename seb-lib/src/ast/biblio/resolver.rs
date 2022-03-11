@@ -1,4 +1,4 @@
-use crate::ast::{Biblio, EntryExt, Resolver};
+use crate::ast::{Biblio, Entry, FieldQuery, Resolver};
 
 /// A [`Biblio`] resolver used for managing a set of entry resolvers until they all succeed in order
 /// to make a [`Biblio`] with valid entries in.
@@ -6,7 +6,7 @@ use crate::ast::{Biblio, EntryExt, Resolver};
 pub struct BiblioResolver {
     pub(super) failed: bool,
     pub(super) resolvers: Vec<Resolver>,
-    pub(super) entries: Vec<Box<dyn EntryExt>>,
+    pub(super) entries: Vec<Entry>,
 }
 
 impl BiblioResolver {
@@ -29,7 +29,7 @@ impl BiblioResolver {
                 entries: self
                     .entries
                     .into_iter()
-                    .map(|e| (e.cite().into_owned(), e))
+                    .map(|e| (e.cite().to_owned(), e))
                     .collect(),
             })
         } else {
@@ -52,7 +52,7 @@ impl BiblioResolver {
     ///
     /// The index should be found using the [`BiblioResolver::map_iter_all`] iterator as this
     /// iterator is in the same order.
-    pub fn checked_remove(&mut self, index: usize) -> Option<Result<Box<dyn EntryExt>, Resolver>> {
+    pub fn checked_remove(&mut self, index: usize) -> Option<Result<Entry, Resolver>> {
         if index < self.entries.len() {
             Some(Ok(self.entries.remove(index)))
         } else if index - self.entries.len() < self.resolvers.len() {
@@ -66,11 +66,11 @@ impl BiblioResolver {
     ///
     /// This allows for querying what a possibly unresolved Biblio contains without having to fully
     /// resolve it first.
-    pub fn iter(&self) -> impl Iterator<Item = &dyn EntryExt> {
+    pub fn iter(&self) -> impl Iterator<Item = &dyn FieldQuery> {
         self.entries
             .iter()
-            .map(AsRef::as_ref)
-            .chain(self.resolvers.iter().map(|r| r as &dyn EntryExt))
+            .map(|e| e as &dyn FieldQuery)
+            .chain(self.resolvers.iter().map(|r| r as &dyn FieldQuery))
     }
 }
 
@@ -107,7 +107,7 @@ impl std::error::Error for BiblioResolver {}
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{self, Manual};
+    use crate::ast::{Entry, EntryKind, Manual};
 
     use super::*;
 
@@ -122,20 +122,18 @@ mod tests {
         assert_eq!(None, resolver.checked_remove(0).map(|_| ()));
     }
 
-    fn manual_entry() -> Box<dyn EntryExt> {
-        let mut resolver = Manual::resolver_with_cite("cite");
-        resolver.set_field("title", "Title");
-        resolver.resolve().unwrap()
-    }
-
     #[test]
     fn some_entry_on_checked_removed_with_single_resolved_entry() {
-        let entry = manual_entry();
+        let entry = Entry::Manual(Manual {
+            cite: "cite".to_owned(),
+            title: "Title".into(),
+            optional: std::collections::HashMap::default(),
+        });
 
         let mut resolver = BiblioResolver {
             failed: false,
             resolvers: vec![],
-            entries: vec![entry],
+            entries: vec![entry.clone()],
         };
 
         let removed = resolver
@@ -143,13 +141,12 @@ mod tests {
             .expect("Single item in resolver so checked_remove of 0 should return a Some(_)")
             .expect("Single item is a resolved entry so should contain an Ok(Entry)");
 
-        assert_eq!("cite", removed.cite());
-        assert_eq!(Some(&"Title".into()), removed.get_field("title"));
+        assert_eq!(entry, removed);
     }
 
     #[test]
     fn some_resolver_on_checked_remove_with_single_resolver() {
-        let resolver = ast::Article::resolver();
+        let resolver = Entry::resolver(EntryKind::Article);
 
         let mut biblio_resolver = BiblioResolver {
             failed: false,
@@ -167,13 +164,18 @@ mod tests {
 
     #[test]
     fn checked_remove_indexes_resolved_before_unresolved() {
-        let resolver = ast::Article::resolver();
+        let entry = Entry::Manual(Manual {
+            cite: "cite".to_owned(),
+            title: "Title".into(),
+            optional: std::collections::HashMap::default(),
+        });
+        let resolver = Entry::resolver(EntryKind::Article);
 
         // use closure so we can create new BiblioResolver after altering internal state
         let create_biblio_resolver_with_both = || BiblioResolver {
             failed: false,
             resolvers: vec![resolver.clone()],
-            entries: vec![manual_entry()],
+            entries: vec![entry.clone()],
         };
 
         let mut biblio_resolver = create_biblio_resolver_with_both();
@@ -183,8 +185,7 @@ mod tests {
             .expect("Resolved entries should be indexed first so this should be an Ok(Entry)");
 
         // avoid move using reference because create_biblio_resolver_with_both closure is borrowing
-        assert_eq!("cite", removed_first.cite());
-        assert_eq!(Some(&"Title".into()), removed_first.get_field("title"));
+        assert_eq!(&entry, &removed_first);
 
         let removed_last = biblio_resolver
             .checked_remove(0)
@@ -216,14 +217,17 @@ mod tests {
             .expect("Single item in BiblioResolver")
             .expect("Resolved entry should still be at 0 index so this should be an Ok(Entry)");
 
-        assert_eq!("cite", removed.cite());
-        assert_eq!(Some(&"Title".into()), removed.get_field("title"));
+        assert_eq!(entry, removed);
     }
 
     #[test]
     fn iter_to_query_fields() {
-        let entry = manual_entry();
-        let resolver = ast::Article::resolver();
+        let entry = Entry::Manual(Manual {
+            cite: "cite".to_owned(),
+            title: "Title".into(),
+            optional: std::collections::HashMap::default(),
+        });
+        let resolver = Entry::resolver(EntryKind::Article);
 
         let biblio_resolver = BiblioResolver {
             failed: false,
@@ -242,8 +246,8 @@ mod tests {
 
     #[test]
     fn display_of_resolver_is_correctly_formatted() {
-        let resolver_one = ast::Article::resolver();
-        let resolver_two = ast::Article::resolver();
+        let resolver_one = Entry::resolver(EntryKind::Article);
+        let resolver_two = Entry::resolver(EntryKind::PhdThesis);
 
         let biblio_resolver = BiblioResolver {
             failed: false,

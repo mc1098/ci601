@@ -1,20 +1,18 @@
 use eyre::eyre;
 use log::trace;
-use seb::ast::{Biblio, BiblioResolver, EntryExt, Resolver as EntryResolver};
+use seb::ast::{Biblio, BiblioResolver, Entry, Resolver as EntryResolver};
 
 use crate::interact::{user_resolve_entry, user_select, user_select_entry};
 
 #[inline]
-pub fn take_first_resolvable(
-    bib: Result<Biblio, BiblioResolver>,
-) -> Result<Box<dyn EntryExt>, EntryResolver> {
+pub fn take_first_resolvable(bib: Result<Biblio, BiblioResolver>) -> Result<Entry, EntryResolver> {
     bib.map(|bib| bib.into_entries().remove(0))
         .or_else(|mut b| b.checked_remove(0).expect("BiblioResolver was empty!"))
 }
 
 pub fn user_select_resolvable(
     bib: Result<Biblio, BiblioResolver>,
-) -> eyre::Result<Result<Box<dyn EntryExt>, EntryResolver>> {
+) -> eyre::Result<Result<Entry, EntryResolver>> {
     match bib {
         Ok(bib) => user_select_entry(bib.into_entries()).map(Ok),
         Err(resolver) => select_from_resolver(resolver),
@@ -23,7 +21,7 @@ pub fn user_select_resolvable(
 
 fn select_from_resolver(
     mut resolver: BiblioResolver,
-) -> eyre::Result<Result<Box<dyn EntryExt>, EntryResolver>> {
+) -> eyre::Result<Result<Entry, EntryResolver>> {
     let items = resolver
         .iter()
         .map(|fq| {
@@ -39,7 +37,7 @@ fn select_from_resolver(
 }
 
 #[inline]
-pub fn resolve_entry_resolver(entry_resolver: EntryResolver) -> eyre::Result<Box<dyn EntryExt>> {
+pub fn resolve_entry_resolver(entry_resolver: EntryResolver) -> eyre::Result<Entry> {
     let mut res = Err(entry_resolver);
     loop {
         match res {
@@ -68,7 +66,10 @@ pub fn check_entry_field_duplication(bib: &Biblio, name: &str, value: &str) -> e
 
 #[test]
 fn field_dup_macro() {
+    use seb::ast::Entry;
+
     use seb::ast::{Manual, QuotedString};
+    use std::collections::HashMap;
 
     let mut bib = Biblio::new(vec![]);
     let name = "doi";
@@ -76,12 +77,13 @@ fn field_dup_macro() {
 
     assert!(check_entry_field_duplication(&bib, name, &doi).is_ok());
 
-    let mut resolver = Manual::resolver_with_cite(String::new());
-    resolver.set_field("title", "test");
-    resolver.set_field(name, doi.clone());
-    let entry = resolver.resolve().unwrap();
+    let data = Manual {
+        cite: String::new(),
+        title: QuotedString::new("test".to_owned()),
+        optional: HashMap::from([(name.to_owned(), doi.clone())]),
+    };
 
-    bib.insert(entry);
+    bib.insert(Entry::Manual(data));
 
     assert!(check_entry_field_duplication(&bib, name, &doi).is_err());
 }

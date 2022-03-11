@@ -269,6 +269,6 @@ mod tests {
         let biblio = file.read_ast().unwrap().unwrap();
         let res = biblio.entries().next().unwrap();
 
-        assert!(expected.eq(res));
+        assert_eq!(&expected, res);
     }
 }

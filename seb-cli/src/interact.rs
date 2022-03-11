@@ -1,6 +1,8 @@
 use dialoguer::Input;
 use eyre::{eyre, Context, Result};
-use seb::ast::{Biblio, BiblioResolver, EntryExt, QuotedString, Resolver as EntryResolver};
+use seb::ast::{
+    Biblio, BiblioResolver, Entry, FieldQuery, QuotedString, Resolver as EntryResolver,
+};
 
 pub fn user_select<S: ToString>(prompt: &str, items: &[S]) -> Result<usize> {
     let selection = dialoguer::Select::with_theme(&dialoguer::theme::ColorfulTheme::default())
@@ -25,12 +27,12 @@ where
     user_select(prompt, &display_items)
 }
 
-pub fn user_select_entry(mut entries: Vec<Box<dyn EntryExt>>) -> Result<Box<dyn EntryExt>> {
+pub fn user_select_entry(mut entries: Vec<Entry>) -> Result<Entry> {
     let items = entries_titles(&entries);
     user_select("Confirm entry", &items).map(|i| entries.remove(i))
 }
 
-fn entries_titles(entries: &[Box<dyn EntryExt>]) -> Vec<String> {
+fn entries_titles(entries: &[Entry]) -> Vec<String> {
     entries.iter().map(|e| e.title().to_string()).collect()
 }
 
