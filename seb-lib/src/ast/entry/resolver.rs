@@ -83,6 +83,12 @@ impl Resolver {
         }
     }
 
+    /// Returns the type of the Entry
+    #[must_use]
+    pub const fn kind(&self) -> &EntryKind<'_> {
+        &self.target
+    }
+
     /// Build an entry from the fields added in this resolver.
     ///
     /// # Errors

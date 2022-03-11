@@ -1,8 +1,6 @@
 use dialoguer::Input;
 use eyre::{eyre, Context, Result};
-use seb::ast::{
-    Biblio, BiblioResolver, Entry, FieldQuery, QuotedString, Resolver as EntryResolver,
-};
+use seb::ast::{Biblio, BiblioResolver, Entry, QuotedString, Resolver as EntryResolver};
 
 pub fn user_select<S: ToString>(prompt: &str, items: &[S]) -> Result<usize> {
     let selection = dialoguer::Select::with_theme(&dialoguer::theme::ColorfulTheme::default())
@@ -66,10 +64,8 @@ pub fn user_resolve_biblio_resolver(resolver: BiblioResolver) -> eyre::Result<Bi
 }
 
 pub fn user_resolve_entry(resolver: &mut EntryResolver) -> eyre::Result<()> {
-    let title = resolver
-        .get_field("title")
-        .map_or_else(|| "No title".to_owned(), |qs| qs.to_string());
-    println!("Missing required fields for entry: {title}");
+    let kind = resolver.kind();
+    println!("Missing required fields for {kind} entry:");
 
     while let Some(field_entry) = resolver.next_required_entry() {
         let input = user_input(format!("Enter value for the {} field", field_entry.key()))?;

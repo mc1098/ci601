@@ -1,5 +1,6 @@
 mod add;
 
+use crate::interact;
 use add::AddCommands;
 
 use seb::ast::Biblio;
@@ -15,6 +16,50 @@ pub enum Commands {
     Add {
         #[clap(subcommand)]
         command: AddCommands,
+    },
+
+    /// Add a new entry manually
+    ///
+    /// This subcommand will assume interact flag is set even if no explicitly used.
+    #[clap(arg_required_else_help = true)]
+    New {
+        /// The kind of the entry to add
+        ///
+        /// The following are known entry types:
+        ///
+        /// - article
+        ///
+        /// - book
+        ///
+        /// - booklet
+        ///
+        /// - book chapter
+        ///
+        /// - book pages
+        ///
+        /// - book section
+        ///
+        /// - in proceedings
+        ///
+        /// - manual
+        ///
+        /// - master thesis
+        ///
+        /// - phd thesis
+        ///
+        /// - proceedings
+        ///
+        /// - tech report
+        ///
+        /// - unpublished
+        ///
+        /// Known entry types will require certain fields to be valid
+        /// and if another kind entry is found then this will be a custom
+        /// entry that only requires a title.
+        #[clap(parse(from_str))]
+        kind: seb::ast::EntryKind<'static>,
+        /// Cite to use for new entry
+        cite: Option<String>,
     },
     /// Remove an entry from the bibliography file using the cite key
     #[clap(arg_required_else_help = true)]
@@ -32,8 +77,19 @@ impl Commands {
     ) -> Result<String, Box<dyn std::error::Error>> {
         match self {
             Commands::Add { command } => command.execute(biblio, interact),
+            Commands::New { kind, cite } => {
+                let mut resolver = if let Some(cite) = cite {
+                    seb::ast::Entry::resolver_with_cite(kind, cite)
+                } else {
+                    seb::ast::Entry::resolver(kind)
+                };
+
+                interact::user_resolve_entry(&mut resolver)?;
+                let entry = resolver.resolve()?;
+                biblio.insert(entry);
+                Ok("New entry added to bibliography".to_owned())
+            }
             Commands::Rm { cite } => {
-                dbg!("rm subcommand called with the value of '{cite}'");
                 trace!("Checking current bibliography for entry with this cite key..");
                 if biblio.remove(&cite) {
                     Ok("Entry removed from bibliography".to_owned())
