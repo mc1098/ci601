@@ -3,7 +3,7 @@ use crate::{
     interact::{user_resolve_entry, user_select_map},
 };
 
-use seb::ast::{Biblio, BiblioResolver, EntryExt};
+use seb::ast::{Biblio, BiblioResolver, Entry};
 
 use clap::Subcommand;
 use eyre::{eyre, Context};
@@ -87,9 +87,9 @@ impl AddCommands {
             }
         };
 
-        self.set_cite(entry.as_mut());
+        self.set_cite(&mut entry);
 
-        let cite = entry.cite().into_owned();
+        let cite = entry.cite().to_owned();
         biblio.insert(entry);
         info!("Entry with cite '{cite}' added to bibliography");
         Ok(cite)
@@ -109,7 +109,8 @@ impl AddCommands {
             AddCommands::Ietf { rfc_number, .. } => {
                 debug!("ietf subcommand called with value of '{}'", &rfc_number);
                 biblio.entries().any(|e| {
-                    contains_field(e, "series", "Request for Comment")
+                    matches!(e.kind(), seb::ast::EntryKind::Other(_))
+                        && contains_field(e, "series", "Request for Comment")
                         && contains_field(e, "number", rfc_number.to_string().as_str())
                 });
                 seb::entries_by_rfc(*rfc_number).wrap_err_with(|| eyre!("Cannot find the entry"))
@@ -144,7 +145,7 @@ impl AddCommands {
         }
     }
 
-    fn set_cite(self, entry: &mut dyn EntryExt) {
+    fn set_cite(self, entry: &mut Entry) {
         match self {
             AddCommands::Doi {
                 cite: Some(cite), ..
@@ -154,15 +155,15 @@ impl AddCommands {
             }
             | AddCommands::Isbn {
                 cite: Some(cite), ..
-            } => {
-                entry.set_cite(cite);
-            }
+            } => entry.set_cite(cite),
             _ => {}
         }
     }
 }
 
-fn contains_field(entry: &dyn EntryExt, field_name: &str, value: &str) -> bool {
+fn contains_field(entry: &Entry, field_name: &str, value: &str) -> bool {
+    use seb::ast::FieldQuery;
+
     entry
         .get_field(field_name)
         .map(|v| v.as_ref() == value)
