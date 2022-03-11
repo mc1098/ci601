@@ -18,7 +18,7 @@ pub trait FieldQuery {
 
 macro_rules! entry_impl {
     ($(
-        $mod:ident:
+        $display:literal => $mod:ident:
             $(#[$target_comment:meta])*
             $target:ident($(
                 $(#[$req_comment:meta])*
@@ -57,6 +57,16 @@ macro_rules! entry_impl {
                 match self {
                     $(Self::$target => &[$(stringify!($req),)+],)*
                     Self::Other(_) => &["title"],
+                }
+            }
+        }
+
+        impl From<&str> for EntryKind<'static> {
+            fn from(s: &str) -> Self {
+                let s = s.to_lowercase();
+                match s.as_str() {
+                    $($display => Self::$target,)*
+                    _ => Self::Other(s.into()),
                 }
             }
         }
@@ -375,7 +385,7 @@ impl FieldQuery for Other {
 }
 
 entry_impl! {
-    article:
+    "article" => article:
         /// The article entry type represents an article
         Article(
             /// Authors of the article.
@@ -387,7 +397,7 @@ entry_impl! {
             /// The year of this article.
             year
         ),
-    book:
+    "book" => book:
         /// The book entry type
         Book(
             /// Authors of the book.
@@ -399,14 +409,14 @@ entry_impl! {
             /// The year the book was published.
             year
         ),
-    booklet:
+    "booklet" => booklet:
         /// The booklet entry type
         Booklet(
             /// Title of the booklet.
             title
         ),
     //inbook
-    book_chapter:
+    "book chapter" => book_chapter:
         /// A chapter of a book
         BookChapter(
             /// Authors of the book.
@@ -420,7 +430,7 @@ entry_impl! {
             /// Year the book was published.
             year
         ),
-    book_pages:
+    "book pages" => book_pages:
         /// A page range of a book
         BookPages(
             /// Authors of the book.
@@ -436,7 +446,7 @@ entry_impl! {
             /// Year the book was published.
             year
         ),
-    book_section:
+    "book section" => book_section:
         /// A section of a book with a title.
         BookSection(
             /// Authors of the book.
@@ -450,7 +460,7 @@ entry_impl! {
             /// Year the book was published.
             year
         ),
-    in_proceedings:
+    "in proceedings" => in_proceedings:
         /// Published paper in a conference proceedings.
         InProceedings(
             /// Authors of the book.
@@ -462,13 +472,13 @@ entry_impl! {
             /// Year the paper was published.
             year
         ),
-    manual:
+    "manual" => manual:
         /// Manual for technical information for machine software.
         Manual(
             /// Title of the manual.
             title
         ),
-    master_thesis:
+    "master thesis" => master_thesis:
         /// A thesis for a Master's level degree.
         MasterThesis(
             /// Authors of the thesis.
@@ -480,7 +490,7 @@ entry_impl! {
             /// Year the paper was published.
             year
         ),
-    phd_thesis:
+    "phd thesis" => phd_thesis:
         /// A thesis for a PhD level degree.
         PhdThesis(
             /// Authors of the thesis.
@@ -492,7 +502,7 @@ entry_impl! {
             /// Year the paper was published.
             year
         ),
-    proceedings:
+    "proceedings" => proceedings:
         /// A conference proceeding.
         Proceedings(
             /// Title of the conference.
@@ -500,7 +510,7 @@ entry_impl! {
             /// Year of the conference.
             year
         ),
-    tech_report:
+    "tech report" => tech_report:
         /// A technical report.
         TechReport(
             /// Authors of the report.
@@ -512,7 +522,7 @@ entry_impl! {
             /// Year of the report.
             year
         ),
-    unpublished:
+    "unpublished" => unpublished:
         /// A document that has not been officially published.
         Unpublished(
             /// Authors of the document.
