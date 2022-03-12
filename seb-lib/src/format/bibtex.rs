@@ -28,8 +28,18 @@ impl Format for BibTex {
                     Error::new(ErrorKind::Deserialize, "Unable to parse string as BibTeX")
                 })?
         };
-        let entries = biblio.into_iter().map(ast::Resolver::from).collect();
-        Ok(Biblio::try_resolve(entries))
+
+        let entry_keys = biblio.iter().map(|entry| &entry.key);
+
+        let mut entries = Vec::with_capacity(entry_keys.len());
+
+        for entry_key in entry_keys {
+            let entry = biblio.get_resolved(entry_key).unwrap();
+            entries.push(entry);
+        }
+
+        let resolvers = entries.into_iter().map(ast::Resolver::from).collect();
+        Ok(Biblio::try_resolve(resolvers))
     }
 
     fn compose(biblio: &Biblio) -> Self {
@@ -134,18 +144,25 @@ fn to_short_month(month: &QuotedString) -> String {
     format!("month = {value}")
 }
 
-impl From<biblatex::EntryType> for ast::EntryKind<'static> {
-    fn from(entry_type: biblatex::EntryType) -> Self {
+impl From<&biblatex::Entry> for ast::EntryKind<'static> {
+    fn from(entry: &biblatex::Entry) -> Self {
         use ast::EntryKind;
         use biblatex::EntryType;
 
-        match entry_type.to_bibtex() {
+        match entry.entry_type.to_bibtex() {
             EntryType::Article => EntryKind::Article,
             EntryType::Book => EntryKind::Book,
             EntryType::Booklet => EntryKind::Booklet,
-            EntryType::InCollection | EntryType::InBook | EntryType::SuppBook => {
-                EntryKind::BookSection
+            EntryType::InBook => {
+                if entry.chapter().is_some() {
+                    EntryKind::BookChapter
+                } else if entry.pages().is_some() {
+                    EntryKind::BookPages
+                } else {
+                    EntryKind::BookSection
+                }
             }
+            EntryType::InCollection | EntryType::SuppBook => EntryKind::BookSection,
             EntryType::InProceedings => EntryKind::InProceedings,
             EntryType::Manual => EntryKind::Manual,
             EntryType::MastersThesis => EntryKind::MasterThesis,
@@ -177,19 +194,31 @@ impl From<biblatex::Entry> for ast::Resolver {
             _ => None,
         });
 
+        let kind: ast::EntryKind<'_> = (&entry).into();
+
         // Deconstruct to avoid cloning
         let biblatex::Entry {
             key: cite,
-            entry_type,
             mut fields,
+            ..
         } = entry;
 
-        let kind = entry_type.into();
-        let mut resolver = ast::Entry::resolver_with_cite(kind, cite);
+        let mut resolver = ast::Entry::resolver_with_cite(kind.clone(), cite);
 
         for (name, value) in fields.drain() {
             match name.as_str() {
-                "booktitle" => resolver.book_title(value),
+                "booktitle" => {
+                    if matches!(
+                        kind,
+                        ast::EntryKind::BookSection
+                            | ast::EntryKind::BookPages
+                            | ast::EntryKind::BookChapter
+                    ) {
+                        resolver.title(value);
+                    } else {
+                        resolver.book_title(value);
+                    }
+                }
                 "date" => {
                     if let Some(dates) = dates.take() {
                         for (name, value) in dates {
@@ -454,6 +483,30 @@ mod tests {
 
             assert_eq!(format!("month = {expected_month}"), actual);
         }
+    }
+
+    #[test]
+    fn crossref_fields_are_resolved_when_parsed() {
+        let raw = "
+            @book{book, title={My test book}, publisher={Me}, author={Also me}, year={2000},}
+            @inbook{inbook, chapter={Test Chapter}, crossref={book},}
+            ";
+
+        let bib = BibTex::new(raw.to_owned());
+        let biblio = bib
+            .parse()
+            .expect("Valid BibTeX string")
+            .expect("Required fields satisfied");
+
+        let in_book = biblio
+            .entries()
+            .find(|entry| entry.cite() == "inbook")
+            .expect("inbook cite entry should exist");
+
+        assert_eq!("My test book", &**in_book.title());
+        assert_eq!("Me", &**in_book.get_field("publisher").unwrap());
+        assert_eq!("Also me", &**in_book.get_field("author").unwrap());
+        assert_eq!("2000", &**in_book.get_field("year").unwrap());
     }
 
     #[test]
