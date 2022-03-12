@@ -387,6 +387,43 @@ mod tests {
         check_each_field_with_expected(month_nums);
     }
 
+    #[test]
+    fn normalize_date_fields_to_year_month_day_fields() {
+        let raw = "@misc{cite, title={test}, date={2020-04-03},}";
+        let [year, month, day] = parse_and_get_entry_date_parts(raw);
+
+        assert_eq!("2020", &*year.unwrap());
+        assert_eq!("4", &*month.unwrap());
+        assert_eq!("3", &*day.unwrap());
+
+        let raw = "@misc{cite, title={test}, date={2022-01},}";
+        let [year, month, day] = parse_and_get_entry_date_parts(raw);
+
+        assert_eq!("2022", &*year.unwrap());
+        assert_eq!("1", &*month.unwrap());
+        assert_eq!(None, day);
+    }
+
+    fn parse_and_get_entry_date_parts(raw: &str) -> [Option<QuotedString>; 3] {
+        let bib = BibTex::new(raw.to_owned());
+
+        let biblio = bib
+            .parse()
+            .expect("valid BibTeX string")
+            .expect("valid required fields");
+
+        let entry = biblio
+            .entries()
+            .next()
+            .expect("Should contain a single entry");
+
+        let year = entry.get_field("year");
+        let month = entry.get_field("month");
+        let day = entry.get_field("day");
+
+        [year.cloned(), month.cloned(), day.cloned()]
+    }
+
     fn check_each_field_with_expected<const N: usize>(slice: [(&'static str, &'static str); N]) {
         for (expected_month, month_value) in slice {
             let field = field! { "month": month_value };
