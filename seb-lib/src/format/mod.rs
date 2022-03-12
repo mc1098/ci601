@@ -9,6 +9,8 @@ use crate::{
     ast::{Biblio, BiblioResolver, Entry},
     Error,
 };
+
+#[cfg(feature = "bibtex")]
 pub use bibtex::BibTex;
 
 // TODO: Consider defining Format so that it can wrap T types, where T: std::io::Write +
