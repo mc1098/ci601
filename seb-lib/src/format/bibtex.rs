@@ -160,6 +160,23 @@ impl From<biblatex::EntryType> for ast::EntryKind<'static> {
 
 impl From<biblatex::Entry> for ast::Resolver {
     fn from(entry: biblatex::Entry) -> Self {
+        let mut dates = entry.date().and_then(|date| match date.value {
+            biblatex::DateValue::At(dt) => {
+                let dates = [
+                    Some(("year", dt.year.to_string())),
+                    // month + 1 as biblatex starts at zero
+                    dt.month.map(|month| ("month", (month + 1).to_string())),
+                    // day + 1 as biblatex starts at zero
+                    dt.day.map(|day| ("day", (day + 1).to_string())),
+                ]
+                .into_iter()
+                .flatten()
+                .map(|(n, s)| (n, vec![biblatex::Chunk::Normal(s)]));
+                Some(dates)
+            }
+            _ => None,
+        });
+
         // Deconstruct to avoid cloning
         let biblatex::Entry {
             key: cite,
@@ -171,10 +188,16 @@ impl From<biblatex::Entry> for ast::Resolver {
         let mut resolver = ast::Entry::resolver_with_cite(kind, cite);
 
         for (name, value) in fields.drain() {
-            if name == "booktitle" {
-                resolver.book_title(value);
-            } else {
-                resolver.set_field(&name, value);
+            match name.as_str() {
+                "booktitle" => resolver.book_title(value),
+                "date" => {
+                    if let Some(dates) = dates.take() {
+                        for (name, value) in dates {
+                            resolver.set_field(name, value);
+                        }
+                    }
+                }
+                name => resolver.set_field(name, value),
             }
         }
 
