@@ -25,8 +25,6 @@ Bug Fixes:
 
 Features:
 
-* [FEAT #133](https://github.com/mc1098/seb/pull/133):
-  Group BibTeX entries by entry types in the resulting bibliography file.
 * [FEAT #136](https://github.com/mc1098/seb/pull/136):
   Add `From<&str>` for `EntryKind<'static>`.
 * [FEAT #139](https://github.com/mc1098/seb/pull/139):
@@ -42,6 +40,8 @@ Bug Fixes:
 
 Features:
 
+* [FEAT #133](https://github.com/mc1098/seb/pull/133):
+  Group BibTeX entries by entry types in the resulting bibliography file.
 * [FEAT #136](https://github.com/mc1098/seb/pull/136):
   `new` subcommand for creating bibliographic entries manually (enforces required fields).
 
