@@ -4,6 +4,47 @@ Unreleased
 
 Unreleased changes. Release notes have not yet been written.
 
+`seb-lib` 0.2.0
+===============
+
+Breaking Changes:
+
+* [BREAKING #124](https://github.com/mc1098/seb/pull/124):
+  `Resolver::required_fields` now returns a `impl Iterator<Item = &str>` instead of a `impl Iterator<Item = Cow<'static, str>>`.
+* [BREAKING #125](https://github.com/mc1098/seb/pull/125):
+  Removes the `Entry::find_field` - import the `FieldQuery` trait and use the `FieldQuery::get_field` for the same functionality.
+
+Bug Fixes:
+
+* [FIX #134](https://github.com/mc1098/seb/pull/134):
+  Fix `month` field output to produce the short month name without braces for `BibTex` format.
+* [FIX #137](https://github.com/mc1098/seb/pull/137):
+  Fix `date` fields are now normalized into date parts (`year`, `month`, `day`) for `BibTex` format.
+* [FIX #138](https://github.com/mc1098/seb/pull/138):
+  Fix `crossref` field support to fully resolve those entries.
+
+Features:
+
+* [FEAT #133](https://github.com/mc1098/seb/pull/133):
+  Group BibTeX entries by entry types in the resulting bibliography file.
+* [FEAT #136](https://github.com/mc1098/seb/pull/136):
+  Add `From<&str>` for `EntryKind<'static>`.
+* [FEAT #139](https://github.com/mc1098/seb/pull/139):
+  Add `bibtex` feature gate for the `BibTex` `Format`.
+
+`seb-cli` 0.1.1
+===============
+
+Bug Fixes:
+
+* [FIX #123](https://github.com/mc1098/seb/pull/123):
+  Fix `ietf` subcommand duplication check to not just check the `number` field.
+
+Features:
+
+* [FEAT #136](https://github.com/mc1098/seb/pull/136):
+  `new` subcommand for creating bibliographic entries manually (enforces required fields).
+
 0.1.0
 =====
 
