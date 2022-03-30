@@ -63,20 +63,17 @@ pub fn open_or_create_format_file<F: Format>(
 ) -> eyre::Result<FormatFile<F>> {
     if let Some(path) = file_name {
         trace!("opening {} file as a {} file", path.display(), F::name());
-        open_file_by_name(&path)
-    } else {
-        trace!("Searching current directory for any {} files", F::name());
-        if let Ok(file) = find_format_file_in_current_directory() {
-            Ok(file)
-        } else {
-            let path = PathBuf::from("bibliography").with_extension(F::ext());
+        open_file_by_name(&path).or_else(|_| {
             info!(
-                "No .{} file found in current directory - creating the new file `{}`",
+                "No .{} file found in the current directory - creating the file `{}`",
                 F::ext(),
                 path.display()
             );
             create_file_by_name(&path)
-        }
+        })
+    } else {
+        trace!("Searching current directory for any {} files", F::name());
+        find_format_file_in_current_directory()
     }
 }
 
