@@ -13,6 +13,8 @@
 mod api;
 pub mod ast;
 mod error;
+#[cfg(feature = "file")]
+pub mod file;
 pub mod format;
 
 use ast::{Biblio, BiblioResolver};
