@@ -41,6 +41,19 @@ impl Error {
         }
     }
 
+    /// Wraps an existing error as the source of [`Error`] with a new message.
+    pub fn wrap_with<E, S>(kind: ErrorKind, source: E, message: S) -> Self
+    where
+        E: Into<DynError>,
+        S: Into<String>,
+    {
+        Self {
+            kind,
+            message: Some(message.into()),
+            source: Some(source.into()),
+        }
+    }
+
     /// Returns the kind of error.
     #[must_use]
     pub const fn kind(&self) -> ErrorKind {
