@@ -53,3 +53,19 @@ jobs:
         override: true
     - name: unit and doc tests
       run: cargo test --all --all-features
+  
+  host-docs:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+    - name: generate docs and host
+      working-directory: ./seb-lib
+      run: | 
+        cargo doc --no-deps
+        rm -rf ./docs
+        echo "<meta http-equiv=\"refresh\" content=\"0; url=build_wheel\">" > target/doc/index.html
+        cp -r target/doc ./docs
