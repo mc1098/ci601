@@ -50,7 +50,7 @@ impl BiblioResolver {
     /// The [`BiblioResolver`] can contain both resolvd entries or resolvers and does so in this
     /// order, therefore the index can be used to retrieve either.
     ///
-    /// The index should be found using the [`BiblioResolver::map_iter_all`] iterator as this
+    /// The index should be found using the [`BiblioResolver::iter`] iterator as this
     /// iterator is in the same order.
     pub fn checked_remove(&mut self, index: usize) -> Option<Result<Entry, Resolver>> {
         if index < self.entries.len() {
