@@ -166,9 +166,9 @@ impl Resolver {
     /// the field so users of this API don't need to do this.
     ///
     /// The `value` parameter accepts `Into<QuotedString>` types and for `&str` and
-    /// `String` this is equivalent to using [`ast::QuotedString::new`] so make sure that
-    /// quoting is not required, if it is then use either [`ast::QuotedString::quote`] or
-    /// [`ast::QuotedString::from_quoted`]
+    /// `String` this is equivalent to using [`QuotedString::new`] so make sure that
+    /// quoting is not required, if it is then use either [`QuotedString::quote`] or
+    /// [`QuotedString::from_quoted`]
     #[inline]
     pub fn set_field<I>(&mut self, name: &str, value: I)
     where
@@ -267,9 +267,9 @@ macro_rules! impl_resolver {
                 /// field name and value.
                 ///
                 /// The `value` parameter accepts `Into<QuotedString>` types and for `&str` and
-                /// `String` this is equivalent to using [`ast::QuotedString::new`] so make sure that
-                /// quoting is not required, if it is then use either [`ast::QuotedString::quote`] or
-                /// [`ast::QuotedString::from_quoted`]
+                /// `String` this is equivalent to using [`QuotedString::new`] so make sure that
+                /// quoting is not required, if it is then use either [`QuotedString::quote`] or
+                /// [`QuotedString::from_quoted`]
                 #[inline]
                 pub fn $field<I>(&mut self, value: I)
                     where I: Into<QuotedString>,
