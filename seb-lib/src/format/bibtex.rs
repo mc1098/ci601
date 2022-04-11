@@ -540,6 +540,32 @@ mod tests {
     }
 
     #[test]
+    fn parse_incollection_with_book_title_field() {
+        let s = "@incollection{peytonjones2001tackling,
+            author = {Peyton Jones, Simon},
+            title = {Tackling the awkward squad: monadic input/output, concurrency, exceptions, and foreign-language calls in Haskell},
+            booktitle = {Engineering theories of software construction},
+            publisher = {IOS Press},
+            year = {2001},
+            isbn = {ISBN 1 58603 1724},
+            month = jan,
+            pages = {47-96},
+        }";
+
+        let biblio = BibTex::new(s.to_owned())
+            .parse()
+            .expect("Valid BibTeX string")
+            .expect("Valid entry fields");
+
+        let entry = biblio.into_entries().remove(0);
+
+        assert_eq!(
+            "Engineering theories of software construction",
+            &**entry.get_field("book_title").unwrap()
+        );
+    }
+
+    #[test]
     fn compose_to_bibtex() {
         let references = Biblio::new(entries().drain(..1).collect());
         let result = BibTex::compose(&references);
