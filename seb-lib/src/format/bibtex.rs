@@ -207,18 +207,7 @@ impl From<biblatex::Entry> for ast::Resolver {
 
         for (name, value) in fields.drain() {
             match name.as_str() {
-                "booktitle" => {
-                    if matches!(
-                        kind,
-                        ast::EntryKind::BookSection
-                            | ast::EntryKind::BookPages
-                            | ast::EntryKind::BookChapter
-                    ) {
-                        resolver.title(value);
-                    } else {
-                        resolver.book_title(value);
-                    }
-                }
+                "booktitle" => resolver.book_title(value),
                 "date" => {
                     if let Some(dates) = dates.take() {
                         for (name, value) in dates {
@@ -489,7 +478,7 @@ mod tests {
     fn crossref_fields_are_resolved_when_parsed() {
         let raw = "
             @book{book, title={My test book}, publisher={Me}, author={Also me}, year={2000},}
-            @inbook{inbook, chapter={Test Chapter}, crossref={book},}
+            @inbook{inbook, chapter={Test Chapter}, title={InBook Title}, crossref={book},}
             ";
 
         let bib = BibTex::new(raw.to_owned());
@@ -503,7 +492,7 @@ mod tests {
             .find(|entry| entry.cite() == "inbook")
             .expect("inbook cite entry should exist");
 
-        assert_eq!("My test book", &**in_book.title());
+        assert_eq!("My test book", &**in_book.get_field("book_title").unwrap());
         assert_eq!("Me", &**in_book.get_field("publisher").unwrap());
         assert_eq!("Also me", &**in_book.get_field("author").unwrap());
         assert_eq!("2000", &**in_book.get_field("year").unwrap());
@@ -537,6 +526,32 @@ mod tests {
         let entry = biblio.into_entries().remove(0);
 
         assert_eq!("Correct", &**entry.get_field("book_title").unwrap());
+    }
+
+    #[test]
+    fn parse_incollection_with_book_title_field() {
+        let s = "@incollection{peytonjones2001tackling,
+            author = {Peyton Jones, Simon},
+            title = {Tackling the awkward squad: monadic input/output, concurrency, exceptions, and foreign-language calls in Haskell},
+            booktitle = {Engineering theories of software construction},
+            publisher = {IOS Press},
+            year = {2001},
+            isbn = {ISBN 1 58603 1724},
+            month = jan,
+            pages = {47-96},
+        }";
+
+        let biblio = BibTex::new(s.to_owned())
+            .parse()
+            .expect("Valid BibTeX string")
+            .expect("Valid entry fields");
+
+        let entry = biblio.into_entries().remove(0);
+
+        assert_eq!(
+            "Engineering theories of software construction",
+            &**entry.get_field("book_title").unwrap()
+        );
     }
 
     #[test]
