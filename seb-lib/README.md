@@ -1,7 +1,7 @@
 # `seb-lib`
 
 [![CI](https://github.com/mc1098/seb/actions/workflows/ci.yml/badge.svg)](https://github.com/mc1098/seb/actions/workflows/ci.yml)
-[![MIT licensed][mit-badge][mit-url]
+[![MIT licensed][mit-badge]][mit-url]
 
 [mit-url]: ../LICENSE
 
