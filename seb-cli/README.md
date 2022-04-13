@@ -188,3 +188,19 @@ fields and will do this for every incomplete entry.
 
 Current supported formats:
 - `BibTeX` (default)
+
+## Supported Rust Versions
+
+`seb-lib` is built against the latest stable release. The current `seb-lib` version is not guaranteed to build on
+Rust versions earlier than the latest stable version.
+
+## License 
+
+This project is licensed under the [MIT license].
+
+[MIT license]: https://github.com/mc1098/seb/blob/main/LICENSE
+
+## Contribution
+
+This is an individual university project with specific criteria that is not open to contribution therefore
+any contributions in form of issues or PRs will be closed and ignored.
