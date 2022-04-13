@@ -3,6 +3,7 @@
 [![CI](https://github.com/mc1098/seb/actions/workflows/ci.yml/badge.svg)](https://github.com/mc1098/seb/actions/workflows/ci.yml)
 [![MIT licensed][mit-badge]][mit-url]
 
+[mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: LICENSE
 
 - [seb-lib](./seb-lib/README.md) The `seb` library which contains the bibliographic models and traits
