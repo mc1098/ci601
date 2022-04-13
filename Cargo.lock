@@ -974,7 +974,6 @@ dependencies = [
  "clap",
  "dialoguer",
  "eyre",
- "glob",
  "log",
  "seb",
  "stderrlog",
