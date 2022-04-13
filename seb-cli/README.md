@@ -1,13 +1,19 @@
 # Search-Edit-Bibliography (seb)
 
+[![CI](https://github.com/mc1098/seb/actions/workflows/ci.yml/badge.svg)](https://github.com/mc1098/seb/actions/workflows/ci.yml)
+[![MIT licensed][mit-badge][mit-url]
+
+[mit-url]: ../LICENSE
+
 `seb` is a command line tool for searching and editing bibliographic entries to a supported format file.
 
-`seb` is most useful as a tool for searching for known bibliographic entries by `doi`, `ISBN`, `title` etc.
+`seb` is a useful tool for searching known bibliographic entries by `doi`, `ISBN`, `title` etc.
 and then adding those entries to the bibliography file.
 
 Currently available subcommands:
 
 - [`seb add`](#add-subcommand)
+- [`seb new`](#new-subcommand)
 - [`seb rm`](#rm-subcommand)
 
 ## Add Subcommand
@@ -92,6 +98,34 @@ $ seb add isbn 0735619670
     isbn = {0735619670},
 }
 ```
+
+## New Subcommand
+
+The `new` subcommand is used to interactively<sup>[1]</sup> add a minimal bibliographic entry. The `new` command
+expects a single <KIND> argument which can be any string but a set of <KIND> values will have different
+required fields:
+
+<sup>[1]</sup>_The `new` subcommand is interactive so ignores the `interact` flag and always sets it to `true`._
+
+```console
+$ seb new book
+```
+
+- article
+- book
+- booklet
+- "book chapter"
+- "book pages"
+- "book section"
+- "in proceedings"
+- manual
+- "master thesis"
+- "phd thesis"
+- proceedings
+- "tech report"
+- unpublished
+
+For other field values this becomes a custom entry type and only requires a `title` field value.
 
 ## Rm Subcommand
 
