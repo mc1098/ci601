@@ -1,13 +1,20 @@
 # Search-Edit-Bibliography (seb)
 
+[![CI](https://github.com/mc1098/seb/actions/workflows/ci.yml/badge.svg)](https://github.com/mc1098/seb/actions/workflows/ci.yml)
+[![MIT licensed][mit-badge]][mit-url]
+
+[mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
+[mit-url]: ../LICENSE
+
 `seb` is a command line tool for searching and editing bibliographic entries to a supported format file.
 
-`seb` is most useful as a tool for searching for known bibliographic entries by `doi`, `ISBN`, `title` etc.
+`seb` is a useful tool for searching known bibliographic entries by `doi`, `ISBN`, `title` etc.
 and then adding those entries to the bibliography file.
 
 Currently available subcommands:
 
 - [`seb add`](#add-subcommand)
+- [`seb new`](#new-subcommand)
 - [`seb rm`](#rm-subcommand)
 
 ## Add Subcommand
@@ -93,6 +100,34 @@ $ seb add isbn 0735619670
 }
 ```
 
+## New Subcommand
+
+The `new` subcommand is used to interactively<sup>[1]</sup> add a minimal bibliographic entry. The `new` command
+expects a single <KIND> argument which can be any string but a set of <KIND> values will have different
+required fields:
+
+<sup>[1]</sup>_The `new` subcommand is interactive so ignores the `interact` flag and always sets it to `true`._
+
+```console
+$ seb new book
+```
+
+- article
+- book
+- booklet
+- "book chapter"
+- "book pages"
+- "book section"
+- "in proceedings"
+- manual
+- "master thesis"
+- "phd thesis"
+- proceedings
+- "tech report"
+- unpublished
+
+For other field values this becomes a custom entry type and only requires a `title` field value.
+
 ## Rm Subcommand
 
 Removes a bibliographic entry from the bibliography found in the current directory, or at the path
@@ -153,3 +188,19 @@ fields and will do this for every incomplete entry.
 
 Current supported formats:
 - `BibTeX` (default)
+
+## Supported Rust Versions
+
+`seb-lib` is built against the latest stable release. The current `seb-lib` version is not guaranteed to build on
+Rust versions earlier than the latest stable version.
+
+## License 
+
+This project is licensed under the [MIT license].
+
+[MIT license]: https://github.com/mc1098/seb/blob/main/LICENSE
+
+## Contribution
+
+This is an individual university project with specific criteria that is not open to contribution therefore
+any contributions in form of issues or PRs will be closed and ignored.
