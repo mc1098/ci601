@@ -7,7 +7,7 @@ use std::{
     fs::{File, OpenOptions},
     io::{Read, Seek, Write},
     marker::PhantomData,
-    path::Path,
+    path::{Path, PathBuf},
 };
 
 use crate::{
@@ -15,7 +15,7 @@ use crate::{
     Error, ErrorKind,
 };
 
-use glob::glob;
+use glob::{glob, Paths};
 
 /// A reference to an open file on the filesystem which should have the textual content that
 /// matches the generic [`Format`].
@@ -204,6 +204,35 @@ fn create_file_for_read_and_write<F: Format>(path: &Path) -> Result<FormatFile<F
         })
 }
 
+struct GlobIter {
+    inner: Paths,
+}
+
+impl GlobIter {
+    fn try_glob(pattern: &str) -> Result<Self, Error> {
+        let inner = glob(pattern)
+            .map_err(|e| Error::wrap_with(ErrorKind::IO, e, "Invalid glob pattern used"))?;
+
+        Ok(Self { inner })
+    }
+}
+
+impl Iterator for GlobIter {
+    type Item = Result<PathBuf, Error>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mapped_res = self.inner.next()?.map_err(|e| {
+            Error::wrap_with(
+                ErrorKind::IO,
+                e,
+                "Cannot determine a file path - Do you have the correct permissions?",
+            )
+        });
+
+        Some(mapped_res)
+    }
+}
+
 fn find_format_file_in_directory<F, P>(dir: P) -> Result<FormatFile<F>, Error>
 where
     F: Format,
@@ -216,33 +245,36 @@ where
 
     let pattern = format!("{}/*.{}", path.to_string_lossy(), F::ext());
 
-    let mut iter = glob(&pattern).expect("File pattern should always be valid");
+    let mut iter = GlobIter::try_glob(&pattern)?;
 
-    let path_buf = iter
-        .next()
-        .ok_or_else(|| {
-            Error::new(
-                ErrorKind::IO,
-                format!(
-                    "No .{} file found in the '{}' directory",
-                    F::ext(),
-                    path.display()
-                ),
-            )
-        })?
-        .map_err(|e| {
-            Error::wrap_with(
-                ErrorKind::IO,
-                e,
-                "Cannot determine a file path - Do you have the correct permissions?",
-            )
-        })?;
-
-    if iter.next().is_some() {
-        return Err(Error::new(
+    let path_buf = iter.next().ok_or_else(|| {
+        Error::new(
             ErrorKind::IO,
-            format!("More than one .{} file found", F::ext()),
-        ));
+            format!(
+                "No .{} file found in the '{}' directory",
+                F::ext(),
+                path.display()
+            ),
+        )
+    })??;
+
+    if let Some(res) = iter.next() {
+        let extra_path = res?;
+
+        let path = path
+            .canonicalize()
+            .map_err(|e| Error::wrap(ErrorKind::IO, e))?;
+
+        let msg = format!(
+            "More than one .{} file found in the '{}' directory!\nThe following files were found:\n\
+            {}\n{}",
+            F::ext(),
+            path.display(),
+            path_buf.display(),
+            extra_path.display()
+        );
+
+        return Err(Error::new(ErrorKind::IO, msg));
     }
 
     open_file_for_read_and_write(path_buf.as_path())
