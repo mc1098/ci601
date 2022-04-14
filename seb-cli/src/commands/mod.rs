@@ -18,6 +18,16 @@ pub enum Commands {
         command: AddCommands,
     },
 
+    /// Check the local bibliography file that all the required fields are present for each entry
+    /// type.
+    ///
+    /// This type of check is done before the `add`, `new`, `rm` commands but can be done
+    /// explicitly using this command.
+    ///
+    /// Entries with missing fields can be resolved interactively only when the `interact` flag is
+    /// set using `-i` or `--interact`.
+    Check,
+
     /// Add a new entry manually
     ///
     /// This subcommand will assume interact flag is set even if no explicitly used.
@@ -77,6 +87,9 @@ impl Commands {
     ) -> Result<String, Box<dyn std::error::Error>> {
         match self {
             Commands::Add { command } => command.execute(biblio, interact),
+            // trivially if the biblio is already resolved at this point then it was either
+            // resolved interactively or was valid so a success message can be returned.
+            Commands::Check => Ok("All entries contain the required fields!".to_owned()),
             Commands::New { kind, cite } => {
                 let mut resolver = if let Some(cite) = cite {
                     seb::ast::Entry::resolver_with_cite(kind, cite)
