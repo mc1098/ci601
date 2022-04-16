@@ -48,10 +48,11 @@ pub(crate) fn get_entry_stubs_by_title<C: Client>(
 
     let query_result: QueryResult = client.get_json(&url)?;
     let items = query_result.message.items;
+    // check for empty array of items
     if items.is_empty() {
         Err(Error::new(
             ErrorKind::NoValue,
-            "No entries found for that title",
+            format!("No entries found with a title of {title}"),
         ))
     } else {
         Ok(items.into_iter().map(EntryStub::into_tuple).collect())
