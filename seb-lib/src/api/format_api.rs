@@ -1,7 +1,7 @@
 use crate::{
     ast::{Biblio, BiblioResolver},
     format::Format,
-    Error,
+    Error, ErrorKind,
 };
 
 use super::Client;
@@ -11,7 +11,19 @@ pub(crate) fn get_entry_by_url<C: Client, F: Format>(
 ) -> Result<Result<Biblio, BiblioResolver>, Error> {
     let client = C::default();
 
-    client.get_text(url).map(F::new).and_then(Format::parse)
+    client
+        .get_text(url)
+        .and_then(|text| {
+            if text.is_empty() {
+                Err(Error::new(
+                    ErrorKind::NoValue,
+                    "Request did not find any results",
+                ))
+            } else {
+                Ok(F::new(text))
+            }
+        })
+        .and_then(Format::parse)
 }
 
 #[cfg(test)]
