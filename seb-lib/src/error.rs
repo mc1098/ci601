@@ -72,17 +72,21 @@ impl Error {
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.kind {
-            ErrorKind::IO => f.write_str("IO error")?,
-            ErrorKind::Deserialize => f.write_str("Deserialize error")?,
-            ErrorKind::NoValue => f.write_str("No value error")?,
+            ErrorKind::IO => f.write_str("IO error: ")?,
+            ErrorKind::Deserialize => f.write_str("Deserialize error: ")?,
+            ErrorKind::NoValue => f.write_str("No value error: ")?,
         };
 
         if let Some(message) = &self.message {
-            write!(f, ": {message}")?;
+            write!(f, "{message}")?;
+            if self.source.is_some() {
+                // if there is a source error too then add the new line
+                writeln!(f)?;
+            }
         }
 
         if let Some(cause) = &self.source {
-            write!(f, ": caused by {cause}")?;
+            write!(f, "caused by {cause}")?;
         }
         Ok(())
     }
