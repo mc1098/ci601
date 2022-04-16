@@ -24,7 +24,10 @@ use glob::{glob, Paths};
 /// ignored by the implementation of `Drop`.
 #[allow(clippy::module_name_repetitions)]
 pub struct FormatFile<F: Format> {
+    // Raw file handler.
     file: File,
+    // Generic F in PhantomData so that drop implementation knows that
+    // FormatFile is not holding an actual F that needs dropping too.
     _format: PhantomData<F>,
 }
 
@@ -57,6 +60,7 @@ impl<F: Format> FormatFile<F> {
     /// ```
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
         let path = path.as_ref();
+        // ensure that the path also uses the correct extension
         let path_buf = path.with_extension(F::ext());
         open_file_for_read_and_write(path_buf.as_path())
     }
@@ -88,6 +92,7 @@ impl<F: Format> FormatFile<F> {
     pub fn find<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
         let path = path.as_ref();
 
+        // return early if path is not a directory
         if !path.is_dir() {
             return Err(Error::new(
                 ErrorKind::IO,
@@ -130,6 +135,10 @@ impl<F: Format> Reader for FormatFile<F> {
     type Format = F;
 
     fn read(&mut self) -> Result<Self::Format, Error> {
+        // Read the file contents into a string value then wrap that
+        // string with the associated Format type.
+        //
+        // Any IO error is wrapped by the crate Error type
         read_file_to_string(&mut self.file)
             .map(F::new)
             .map_err(|e| Error::wrap(ErrorKind::IO, e))
@@ -159,6 +168,7 @@ impl<F: Format> Writer for FormatFile<F> {
             file.write_all(bytes)
         }
 
+        // Get raw contents of Format string as bytes
         let bytes = format.raw().into_bytes();
         overrwrite_file_from_start(&mut self.file, &bytes)
             .map_err(|e| Error::wrap(ErrorKind::IO, e))

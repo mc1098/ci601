@@ -40,6 +40,10 @@ impl EntryStub {
     }
 }
 
+/// Get "stubs" of information about an entry when finding multiple entries by title.
+///
+/// This reduces the amount of information requested by only getting the title and the DOI of the
+/// entry - the DOI can be used later with `get_entries_by_doi` function.
 pub(crate) fn get_entry_stubs_by_title<C: Client>(
     title: &str,
 ) -> Result<Vec<(String, String)>, Error> {

@@ -3,8 +3,16 @@ pub(crate) type DynError = Box<dyn std::error::Error + Send + Sync>;
 /// The Errors that may occur when calling the seb functions.
 #[derive(Debug)]
 pub struct Error {
+    // enum to determine the type of the error
     kind: ErrorKind,
+    // Optional message that can be associated with the error.
+    //
+    // An error should contain a message if does not wrap an existing error.
     message: Option<String>,
+    // The source error that this error wraps.
+    //
+    // This is a dyn std::error::Error so that we can hold many different types of errors
+    // and by boxing it then the size of the Error struct is reduced.
     source: Option<DynError>,
 }
 
