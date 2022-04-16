@@ -40,6 +40,10 @@ impl EntryStub {
     }
 }
 
+/// Get "stubs" of information about an entry when finding multiple entries by title.
+///
+/// This reduces the amount of information requested by only getting the title and the DOI of the
+/// entry - the DOI can be used later with `get_entries_by_doi` function.
 pub(crate) fn get_entry_stubs_by_title<C: Client>(
     title: &str,
 ) -> Result<Vec<(String, String)>, Error> {
@@ -48,10 +52,11 @@ pub(crate) fn get_entry_stubs_by_title<C: Client>(
 
     let query_result: QueryResult = client.get_json(&url)?;
     let items = query_result.message.items;
+    // check for empty array of items
     if items.is_empty() {
         Err(Error::new(
             ErrorKind::NoValue,
-            "No entries found for that title",
+            format!("No entries found with a title of {title}"),
         ))
     } else {
         Ok(items.into_iter().map(EntryStub::into_tuple).collect())

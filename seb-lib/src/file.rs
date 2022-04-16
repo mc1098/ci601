@@ -24,7 +24,10 @@ use glob::{glob, Paths};
 /// ignored by the implementation of `Drop`.
 #[allow(clippy::module_name_repetitions)]
 pub struct FormatFile<F: Format> {
+    // Raw file handler.
     file: File,
+    // Generic F in PhantomData so that drop implementation knows that
+    // FormatFile is not holding an actual F that needs dropping too.
     _format: PhantomData<F>,
 }
 
@@ -57,6 +60,7 @@ impl<F: Format> FormatFile<F> {
     /// ```
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
         let path = path.as_ref();
+        // ensure that the path also uses the correct extension
         let path_buf = path.with_extension(F::ext());
         open_file_for_read_and_write(path_buf.as_path())
     }
@@ -88,6 +92,7 @@ impl<F: Format> FormatFile<F> {
     pub fn find<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
         let path = path.as_ref();
 
+        // return early if path is not a directory
         if !path.is_dir() {
             return Err(Error::new(
                 ErrorKind::IO,
@@ -130,6 +135,10 @@ impl<F: Format> Reader for FormatFile<F> {
     type Format = F;
 
     fn read(&mut self) -> Result<Self::Format, Error> {
+        // Read the file contents into a string value then wrap that
+        // string with the associated Format type.
+        //
+        // Any IO error is wrapped by the crate Error type
         read_file_to_string(&mut self.file)
             .map(F::new)
             .map_err(|e| Error::wrap(ErrorKind::IO, e))
@@ -137,9 +146,32 @@ impl<F: Format> Reader for FormatFile<F> {
 }
 
 fn read_file_to_string(file: &mut File) -> Result<String, Error> {
-    let mut content = String::new();
+    // Wraps an IO error when trying to access a file contents or metadata.
+    #[inline]
+    fn wrap_file_access_error(e: std::io::Error) -> Error {
+        Error::wrap_with(ErrorKind::IO, e, "Cannot read contents of file")
+    }
+
+    // We are gonna grab the length of the file first so that the String can be created with the
+    // correct capacity ready for the file so that the kernal buffer can be copied into the String
+    // buffer without needing to reallocate the memory.
+
+    // get length of the file using the metadata
+    let file_len = file.metadata().map_err(wrap_file_access_error)?.len();
+
+    // file length is u64 but making a String with capacity expects a usize.
+    // If a file length is greater than the capacity we can allocate then this is an error.
+    //
+    // Note: we really aren't expecting someone to have a bibliography file larger than usize::MAX but
+    // if they do then lets error out then possibly truncating the bibliography.
+    let file_len = file_len
+        .try_into()
+        .map_err(|e| Error::wrap_with(ErrorKind::IO, e, "File too large!"))?;
+
+    // allocate the correct amount of memory early before the read.
+    let mut content = String::with_capacity(file_len);
     file.read_to_string(&mut content)
-        .map_err(|e| Error::wrap_with(ErrorKind::IO, e, "Cannot read contents of file"))
+        .map_err(wrap_file_access_error)
         .map(move |bytes| {
             log::trace!("{bytes} read from the file");
             content
@@ -159,6 +191,7 @@ impl<F: Format> Writer for FormatFile<F> {
             file.write_all(bytes)
         }
 
+        // Get raw contents of Format string as bytes
         let bytes = format.raw().into_bytes();
         overrwrite_file_from_start(&mut self.file, &bytes)
             .map_err(|e| Error::wrap(ErrorKind::IO, e))
@@ -221,15 +254,18 @@ impl Iterator for GlobIter {
     type Item = Result<PathBuf, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let mapped_res = self.inner.next()?.map_err(|e| {
+        // Wraps the glob error in the crate Error type with a permissions message.
+        #[inline]
+        fn wrap_perm_error(e: glob::GlobError) -> Error {
             Error::wrap_with(
                 ErrorKind::IO,
                 e,
                 "Cannot determine a file path - Do you have the correct permissions?",
             )
-        });
+        }
 
-        Some(mapped_res)
+        // map to the right Error type if the next path exists
+        self.inner.next().map(|res| res.map_err(wrap_perm_error))
     }
 }
 
@@ -239,15 +275,16 @@ where
     P: AsRef<Path>,
 {
     let path = dir.as_ref();
+
+    // early return if not a directory
     if !path.is_dir() {
         return Err(Error::new(ErrorKind::IO, "Path is not a directory"));
     }
 
     let pattern = format!("{}/*.{}", path.to_string_lossy(), F::ext());
-
     let mut iter = GlobIter::try_glob(&pattern)?;
 
-    let path_buf = iter.next().ok_or_else(|| {
+    let found_file = iter.next().ok_or_else(|| {
         Error::new(
             ErrorKind::IO,
             format!(
@@ -258,26 +295,43 @@ where
         )
     })??;
 
-    if let Some(res) = iter.next() {
-        let extra_path = res?;
+    // we check if more than one file is found and if so then we need to return
+    // an error early with all the files found.
 
-        let path = path
+    // map through the remaining items and convert them to file name strings
+    // and collect.
+    let extra_files = iter
+        .map(|res| {
+            let path = res?;
+            Ok::<_, Error>(path.display().to_string())
+        })
+        .collect::<Result<Vec<String>, Error>>()?;
+
+    // if the list of files names is not empty then we need to start building up the error message
+    // for too many files found
+    if !extra_files.is_empty() {
+        // create a list of extra files in a single String.
+        let extra_files = extra_files.join("\n");
+
+        let dir = path
+            // we want the actual file path and not relative "."
             .canonicalize()
+            // shouldn't error as we've had access to this file path already but just to becareful
             .map_err(|e| Error::wrap(ErrorKind::IO, e))?;
 
         let msg = format!(
             "More than one .{} file found in the '{}' directory!\nThe following files were found:\n\
             {}\n{}",
             F::ext(),
-            path.display(),
-            path_buf.display(),
-            extra_path.display()
+            dir.display(),
+            found_file.display(),
+            extra_files,
         );
 
         return Err(Error::new(ErrorKind::IO, msg));
     }
 
-    open_file_for_read_and_write(path_buf.as_path())
+    open_file_for_read_and_write(found_file.as_path())
 }
 
 #[cfg(test)]
