@@ -33,7 +33,7 @@ use super::{Entry, EntryKind};
 pub struct Resolver {
     pub(super) target: EntryKind<'static>,
     pub(super) cite: Option<String>,
-    pub(super) req: Vec<&'static str>,
+    pub(super) req: Vec<Cow<'static, str>>,
     pub(super) fields: HashMap<String, QuotedString>,
     pub(super) entry_resolve: fn(Self) -> Entry,
 }
@@ -48,6 +48,7 @@ impl Resolver {
             .required_fields()
             .iter()
             .map(std::ops::Deref::deref)
+            .map(Cow::Borrowed)
             .collect();
 
         Self {
@@ -119,10 +120,10 @@ impl Resolver {
     /// assert_eq!(None, resolver.required_fields().next());
     /// ```
     pub fn required_fields(&self) -> impl Iterator<Item = &str> {
-        self.req.iter().copied()
+        self.req.iter().map(std::ops::Deref::deref)
     }
 
-    fn entry<'a>(&'a mut self, name: &'static str) -> ResolverEntry<'a> {
+    fn entry<'a>(&'a mut self, name: Cow<'static, str>) -> ResolverEntry<'a> {
         ResolverEntry {
             key: Some(name),
             resolver: self,
@@ -186,6 +187,23 @@ impl Resolver {
         self.req.retain(|r| *r != name.as_str());
         self.fields.insert(name, value);
     }
+
+    /// Add additional required fields in order for this instance to be resolved.
+    ///
+    /// The fields array is checked against the existing required fields and any duplicates
+    /// are ignored.
+    pub fn add_required_fields(&mut self, fields: Vec<String>) {
+        let new_fields = fields
+            .into_iter()
+            .filter(|field| !self.fields.contains_key(field.as_str()))
+            .map(Into::into);
+
+        for field in new_fields {
+            if !self.req.contains(&field) {
+                self.req.push(field);
+            }
+        }
+    }
 }
 
 impl std::fmt::Display for Resolver {
@@ -221,7 +239,7 @@ pub struct ResolverEntry<'a> {
     // key is an Option but is always a Some value so unwrapping is always safe apart from the
     // drop implementation which will check whether the value has been taken in order to reinsert
     // it in the required fields.
-    key: Option<&'static str>,
+    key: Option<Cow<'static, str>>,
     resolver: &'a mut Resolver,
 }
 
@@ -239,7 +257,7 @@ impl<'a> ResolverEntry<'a> {
     /// Sets the value of the entry.
     #[allow(clippy::missing_panics_doc)] // see key field comment
     pub fn insert(mut self, default: QuotedString) {
-        let key = self.key.take().map(ToOwned::to_owned).unwrap();
+        let key = self.key.take().unwrap().into_owned();
         self.resolver.fields.insert(key, default);
     }
 
@@ -296,7 +314,7 @@ impl_resolver!(
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::Manual;
+    use crate::ast::{Book, Manual};
 
     #[test]
     fn resolver_entry_drop_reinserts_required_field() {
@@ -340,5 +358,35 @@ mod tests {
             .expect("Manual only requires title which should be set!");
 
         assert_eq!("test", &**entry.title());
+    }
+
+    #[test]
+    fn adding_new_fields_works() {
+        // Manual only requires title initially
+        let mut resolver = Manual::resolver();
+        resolver.add_required_fields(vec!["url".to_owned(), "author".to_owned()]);
+
+        assert_eq!(
+            ["title", "url", "author"].as_ref(),
+            resolver.required_fields().collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn ignore_existing_fields_when_adding_new_required_fields() {
+        // Book requires the following fields: author, title, publisher, year
+        let mut resolver = Book::resolver();
+
+        // Add new fields with title and publisher being duplicates of existing required fields
+        resolver.add_required_fields(vec![
+            "title".to_owned(),
+            "url".to_owned(),
+            "publisher".to_owned(),
+        ]);
+
+        assert_eq!(
+            ["author", "title", "publisher", "year", "url"].as_ref(),
+            resolver.required_fields().collect::<Vec<_>>()
+        );
     }
 }
