@@ -6,7 +6,6 @@ use add::AddCommands;
 use seb::ast::Biblio;
 
 use clap::Subcommand;
-use log::trace;
 
 #[derive(Subcommand)]
 #[non_exhaustive]
@@ -33,43 +32,40 @@ pub enum Commands {
     /// This subcommand will assume interact flag is set even if no explicitly used.
     #[clap(arg_required_else_help = true)]
     New {
-        /// The kind of the entry to add
+        /// The kind of entry to add.
         ///
         /// The following are known entry types:
         ///
         /// - article
-        ///
         /// - book
-        ///
         /// - booklet
-        ///
         /// - book chapter
-        ///
         /// - book pages
-        ///
         /// - book section
-        ///
         /// - in proceedings
-        ///
         /// - manual
-        ///
         /// - master thesis
-        ///
         /// - phd thesis
-        ///
         /// - proceedings
-        ///
         /// - tech report
-        ///
         /// - unpublished
         ///
         /// Known entry types will require certain fields to be valid
         /// and if another kind entry is found then this will be a custom
         /// entry that only requires a title.
-        #[clap(parse(from_str))]
+        #[clap(parse(from_str), verbatim_doc_comment)]
         kind: seb::ast::EntryKind<'static>,
+
         /// Cite to use for new entry
+        #[clap(long)]
         cite: Option<String>,
+
+        /// Require addition fields ontop of what is already required by the kind of entry.
+        ///
+        /// Any fields already required by the kind are ignored so can be added if essential
+        /// when unsure if the kind already requires that field.
+        #[clap(long, multiple_values(true))]
+        fields: Option<Vec<String>>,
     },
     /// Remove an entry from the bibliography file using the cite key
     #[clap(arg_required_else_help = true)]
@@ -90,20 +86,27 @@ impl Commands {
             // trivially if the biblio is already resolved at this point then it was either
             // resolved interactively or was valid so a success message can be returned.
             Commands::Check => Ok("All entries contain the required fields!".to_owned()),
-            Commands::New { kind, cite } => {
+            Commands::New { kind, cite, fields } => {
                 let mut resolver = if let Some(cite) = cite {
                     seb::ast::Entry::resolver_with_cite(kind, cite)
                 } else {
                     seb::ast::Entry::resolver(kind)
                 };
 
+                if let Some(fields) = fields {
+                    resolver.add_required_fields(fields);
+                }
+
                 interact::user_resolve_entry(&mut resolver)?;
                 let entry = resolver.resolve()?;
+                let cite = entry.cite().to_owned();
                 biblio.insert(entry);
-                Ok("New entry added to bibliography".to_owned())
+
+                log::info!("Entry with cite '{cite}' added to bibliography");
+                Ok(cite)
             }
             Commands::Rm { cite } => {
-                trace!("Checking current bibliography for entry with this cite key..");
+                log::trace!("Checking current bibliography for entry with this cite key..");
                 if biblio.remove(&cite) {
                     Ok("Entry removed from bibliography".to_owned())
                 } else {

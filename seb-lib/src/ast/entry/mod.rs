@@ -334,7 +334,7 @@ impl Other {
         Resolver {
             target: EntryKind::Other(kind.into()),
             cite: None,
-            req: vec!["title"],
+            req: vec!["title".into()],
             fields: HashMap::new(),
             entry_resolve: Self::resolve,
         }
@@ -347,7 +347,7 @@ impl Other {
         Resolver {
             target: EntryKind::Other(kind.into()),
             cite: Some(cite.into()),
-            req: vec!["title"],
+            req: vec!["title".into()],
             fields: HashMap::new(),
             entry_resolve: Self::resolve,
         }
