@@ -128,6 +128,16 @@ $ seb new book
 
 For other field values this becomes a custom entry type and only requires a `title` field value.
 
+Additional required fields can be added inline using the `--field` option which accepts multiple
+values:
+
+```console
+$ seb new book --fields url series
+```
+
+This would require field values for the fields `url` and `series` - any duplicate field names that
+are already required are ignored.
+
 ## Rm Subcommand
 
 Removes a bibliographic entry from the bibliography found in the current directory, or at the path
