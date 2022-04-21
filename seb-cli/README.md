@@ -14,6 +14,7 @@ and then adding those entries to the bibliography file.
 Currently available subcommands:
 
 - [`seb add`](#add-subcommand)
+- [`seb derive`](#derive-subcommand)
 - [`seb new`](#new-subcommand)
 - [`seb rm`](#rm-subcommand)
 
@@ -99,6 +100,45 @@ $ seb add isbn 0735619670
     isbn = {0735619670},
 }
 ```
+
+## Derive Subcommand
+
+The `derive` subcommand can be used to create a new entry type from an existing entry in the bibliography.
+The derived entry citation key is required to identify the existing entry and the `kind` of new entry
+is required with a new citation key.
+
+```console
+$ seb derive SteveMcConnell2004 "book chapter" code_complete_chapter_7
+```
+
+`SteveMcConnell2004` is the existing entry citation key (see `seb add isbn`) and `"book chapter"` is
+the new entry type with `code_complete_chapter_7` being the new entry citation key. Then `seb` will
+try to interactively resolve the new entry type and in this case will require the user to provide a
+value for the `chapter` field. The end result in BibTeX may look like this:
+
+```bibtex
+@book{SteveMcConnell2004,
+    author = {Steve McConnell},
+    title = {Code Complete},
+    booktitle = {Code Complete},
+    publisher = {DV-Professional},
+    year = {2004},
+    isbn = {0735619670},
+}
+
+% inbook
+@inbook{code_complete_chapter_7,
+    author = {Steve McConnell},
+    title = {Code Complete},
+    booktitle = {Code Complete},
+    publisher = {DV-Professional},
+    year = {2004},
+    isbn = {0735619670},
+    chapter = {High-Quality Routines},
+}
+```
+_Note: When `seb` supports `crossref` then the output could also make use of `crossref` field to avoid
+duplication._
 
 ## New Subcommand
 
