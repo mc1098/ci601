@@ -107,6 +107,12 @@ impl Biblio {
             .values()
             .any(|e| e.get_field(key).map(&predicate).unwrap_or_default())
     }
+
+    /// Returns the reference to the `Entry` corresponding to the cite key value.
+    #[must_use]
+    pub fn get(&self, key: &str) -> Option<&Entry> {
+        self.entries.get(key)
+    }
 }
 
 #[cfg(test)]
