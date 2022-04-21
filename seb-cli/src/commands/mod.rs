@@ -72,7 +72,7 @@ pub enum Commands {
 
     /// Add a new entry manually
     ///
-    /// This subcommand will assume interact flag is set even if no explicitly used.
+    /// This subcommand will assume interact flag is set even if not explicitly used.
     #[clap(arg_required_else_help = true)]
     New {
         /// The kind of entry to add.
