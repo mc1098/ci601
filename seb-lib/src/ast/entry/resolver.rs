@@ -204,6 +204,19 @@ impl Resolver {
             }
         }
     }
+
+    /// Sets all the fields from an existing `Entry`.
+    ///
+    /// All field names from the `Entry` are used verbatim to remain consistent so any uppercased
+    /// letters in field names would remain when this wouldn't be true when using the `set_field`
+    /// method.
+    pub fn set_fields_from_entry(&mut self, entry: &Entry) {
+        for field in entry.fields() {
+            // we use the normalized field method to take the field name verbatim so that
+            // they match the name in the existing entry.
+            self.set_normalized_field(field.name.into_owned(), field.value.into_owned());
+        }
+    }
 }
 
 impl std::fmt::Display for Resolver {
@@ -314,7 +327,7 @@ impl_resolver!(
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{Book, Manual};
+    use crate::ast::{Book, BookChapter, Entry, FieldQuery, Manual, Other};
 
     #[test]
     fn resolver_entry_drop_reinserts_required_field() {
@@ -388,5 +401,50 @@ mod tests {
             ["author", "title", "publisher", "year", "url"].as_ref(),
             resolver.required_fields().collect::<Vec<_>>()
         );
+    }
+
+    #[test]
+    fn add_book_entry_fields_to_book_chapter_resolver() {
+        let book = Book {
+            cite: "cite".to_owned(),
+            author: "author".into(),
+            title: "title".into(),
+            publisher: "publisher".into(),
+            year: "year".into(),
+            optional: std::collections::HashMap::default(),
+        };
+
+        let entry = Entry::Book(book);
+
+        // BookChapter requires all the same fields as the Book but also requires the
+        // `chapter` field therefore the only required field left after setting Book
+        // entry should be the `chapter` field.
+        let mut resolver = BookChapter::resolver();
+        resolver.set_fields_from_entry(&entry);
+
+        let mut req_fields = resolver.required_fields();
+        assert_eq!(Some("chapter"), req_fields.next());
+
+        // `chapter` should be the only required field.
+        assert_eq!(None, req_fields.next());
+    }
+
+    #[test]
+    fn field_names_from_entry_keep_casing() {
+        let misc = Other {
+            cite: "cite".to_owned(),
+            kind: "misc".to_owned(),
+            title: "title".into(),
+            optional: std::collections::HashMap::from([("tEsT".to_owned(), "value".into())]),
+        };
+
+        let entry = Entry::Other(misc);
+
+        let mut resolver = Other::resolver("misc".to_owned());
+        resolver.set_fields_from_entry(&entry);
+
+        // Confirm that the casing has remained the same when added to the resolver
+        // We confirm this because using `set_field` normalizes the field name to lowercase.
+        assert!(resolver.get_field("tEsT").is_some());
     }
 }
