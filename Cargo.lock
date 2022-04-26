@@ -960,7 +960,7 @@ dependencies = [
 
 [[package]]
 name = "seb"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "assert_fs",
  "biblatex",
@@ -973,7 +973,7 @@ dependencies = [
 
 [[package]]
 name = "seb-cli"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "assert_cmd",
  "assert_fs",
