@@ -1,3 +1,9 @@
+Unreleased
+
+==========
+
+Unreleased changes. Release notes have not yet been written.
+
 `seb-lib` 0.2.1
 ===============
 
