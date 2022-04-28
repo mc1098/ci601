@@ -84,7 +84,7 @@ impl Format for BibTex {
     }
 }
 
-fn compose_variant(entry: &ast::Entry) -> &str {
+const fn compose_variant(entry: &ast::Entry) -> &str {
     match entry {
         ast::Entry::Article(_) => "article",
         ast::Entry::Book(_) => "book",
@@ -95,7 +95,7 @@ fn compose_variant(entry: &ast::Entry) -> &str {
         ast::Entry::Manual(_) => "manual",
         ast::Entry::MasterThesis(_) => "masterthesis",
         ast::Entry::PhdThesis(_) => "phdthesis",
-        ast::Entry::Other(data) => data.kind(),
+        ast::Entry::Other(_) => "misc",
         ast::Entry::Proceedings(_) => "proceedings",
         ast::Entry::TechReport(_) => "techreport",
         ast::Entry::Unpublished(_) => "unpublished",
@@ -303,7 +303,7 @@ mod tests {
 
     use std::{borrow::Cow, collections::HashMap};
 
-    use crate::ast::FieldQuery;
+    use crate::ast::{FieldQuery, Other};
 
     use super::*;
 
@@ -566,5 +566,18 @@ mod tests {
 }\n\n";
 
         assert_eq!(expected, result.raw());
+    }
+
+    #[test]
+    fn other_entry_composes_to_misc() {
+        // build other entry type with "software" kind
+        let mut resolver = Other::resolver_with_cite("software".to_owned(), "cite");
+        resolver.title("title");
+        let other = resolver.resolve().expect("Valid misc entry");
+
+        // composing any other kind should always become a "misc" for BibTeX
+        let composed_var = compose_variant(&other);
+
+        assert_eq!("misc", composed_var);
     }
 }
