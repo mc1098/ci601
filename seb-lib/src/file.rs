@@ -284,13 +284,19 @@ where
     let pattern = format!("{}/*.{}", path.to_string_lossy(), F::ext());
     let mut iter = GlobIter::try_glob(&pattern)?;
 
+    let dir = path
+        // we want the actual file path and not relative "."
+        .canonicalize()
+        // shouldn't error as we've had access to this file path already but just to becareful
+        .map_err(|e| Error::wrap(ErrorKind::IO, e))?;
+
     let found_file = iter.next().ok_or_else(|| {
         Error::new(
             ErrorKind::IO,
             format!(
                 "No .{} file found in the '{}' directory",
                 F::ext(),
-                path.display()
+                dir.display()
             ),
         )
     })??;
@@ -312,12 +318,6 @@ where
     if !extra_files.is_empty() {
         // create a list of extra files in a single String.
         let extra_files = extra_files.join("\n");
-
-        let dir = path
-            // we want the actual file path and not relative "."
-            .canonicalize()
-            // shouldn't error as we've had access to this file path already but just to becareful
-            .map_err(|e| Error::wrap(ErrorKind::IO, e))?;
 
         let msg = format!(
             "More than one .{} file found in the '{}' directory!\nThe following files were found:\n\
