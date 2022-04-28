@@ -84,7 +84,7 @@ impl Format for BibTex {
     }
 }
 
-fn compose_variant(entry: &ast::Entry) -> &str {
+const fn compose_variant(entry: &ast::Entry) -> &str {
     match entry {
         ast::Entry::Article(_) => "article",
         ast::Entry::Book(_) => "book",
@@ -95,7 +95,7 @@ fn compose_variant(entry: &ast::Entry) -> &str {
         ast::Entry::Manual(_) => "manual",
         ast::Entry::MasterThesis(_) => "masterthesis",
         ast::Entry::PhdThesis(_) => "phdthesis",
-        ast::Entry::Other(data) => data.kind(),
+        ast::Entry::Other(_) => "misc",
         ast::Entry::Proceedings(_) => "proceedings",
         ast::Entry::TechReport(_) => "techreport",
         ast::Entry::Unpublished(_) => "unpublished",
